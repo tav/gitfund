@@ -1,7 +1,7 @@
-// Public Domain (-) 2016 The Gitfund Authors.
-// See the Gitfund UNLICENSE file for details.
+// Public Domain (-) 2016 The GitFund Authors.
+// See the GitFund UNLICENSE file for details.
 
-package web
+package token
 
 import (
 	"crypto/hmac"
@@ -17,43 +17,48 @@ import (
 type KeySpec struct {
 	Key  []byte
 	Hash func() hash.Hash
+	ID   int
 }
 
-type TokenKeys map[int]*KeySpec
+type Keys map[int]*KeySpec
 
-type Token struct {
-	s *tokenState
+type Signed struct {
+	spec  *KeySpec
+	state *state
 }
 
-func (t *Token) String() string {
-	j, err := json.MarshalIndent(t.s, "", "")
+func (t *Signed) String() string {
+	j, err := json.MarshalIndent(t.state, "", "")
 	if err != nil {
 		panic(err)
 	}
-	mac := hmac.New(tokenHash, tokenKey)
+	mac := hmac.New(t.spec.Hash, t.spec.Key)
 	_, err = mac.Write(j)
 	if err != nil {
 		panic(err)
 	}
 	digest := mac.Sum(nil)
-	return fmt.Sprintf("%x.%x.%x.%x", tokenKeyID, digest, t.s.Value, t.s.Expires)
+	return fmt.Sprintf("%x.%x.%x.%x", t.spec.ID, digest, t.state.Value, t.state.Expires)
 }
 
-type tokenState struct {
-	Context string `json:"c"`
+type state struct {
+	Name    string `json:"c"`
 	Value   string `json:"v"`
 	Expires int64  `json:"e"`
 }
 
-func NewToken(context string, value string, duration time.Duration) *Token {
-	return &Token{&tokenState{
-		Context: context,
-		Value:   value,
-		Expires: time.Now().UTC().Add(duration).Unix(),
-	}}
+func New(name string, value string, duration time.Duration, spec *KeySpec) *Signed {
+	return &Signed{
+		spec: spec,
+		state: &state{
+			Name:    name,
+			Value:   value,
+			Expires: time.Now().UTC().Add(duration).Unix(),
+		},
+	}
 }
 
-func ParseToken(context string, token string) string {
+func Parse(name string, token string, keys Keys) string {
 	if len(token) == 0 {
 		return ""
 	}
@@ -65,7 +70,7 @@ func ParseToken(context string, token string) string {
 	if err != nil {
 		return ""
 	}
-	spec, exists := tokenKeys[int(keyID)]
+	spec, exists := keys[int(keyID)]
 	if !exists {
 		return ""
 	}
@@ -84,12 +89,12 @@ func ParseToken(context string, token string) string {
 	if time.Unix(expires, 0).UTC().Before(time.Now().UTC()) {
 		return ""
 	}
-	state := &tokenState{
-		Context: context,
+	s := &state{
+		Name:    name,
 		Value:   string(value),
 		Expires: expires,
 	}
-	j, err := json.MarshalIndent(state, "", "")
+	j, err := json.MarshalIndent(s, "", "")
 	if err != nil {
 		return ""
 	}
@@ -100,7 +105,7 @@ func ParseToken(context string, token string) string {
 	}
 	digest := mac.Sum(nil)
 	if hmac.Equal(digest, []byte(expected)) {
-		return state.Value
+		return s.Value
 	}
 	return ""
 }
