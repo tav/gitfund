@@ -1,0 +1,1 @@
+../../private/app/config.go
