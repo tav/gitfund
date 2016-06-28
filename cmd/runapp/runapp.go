@@ -5,21 +5,25 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsevents"
+	"github.com/tav/golly/log"
+	"github.com/tav/golly/optparse"
 	"github.com/tav/golly/process"
 )
 
 var running *exec.Cmd
 
 var (
+	appDir = ""
+	appPat = ""
 	kill   = &sync.Mutex{}
 	killed = false
 	mutex  = &sync.Mutex{}
@@ -55,7 +59,12 @@ func killProcess() {
 func run() {
 	killProcess()
 	fmt.Println("\n------------------------- BUILDING AND RUNNING APP -------------------------\n")
-	cmd := exec.Command("go", "run", "app/app.go", "app/handlers.go")
+	matches, err := filepath.Glob(appPat)
+	if err != nil {
+		log.Fatal(err)
+	}
+	args := append([]string{"run"}, matches...)
+	cmd := exec.Command("go", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
@@ -81,19 +90,42 @@ func run() {
 }
 
 func main() {
+
+	opts := optparse.New("Usage: runapp [OPTIONS] APP_DIR\n")
+
+	watch := opts.Flags("-w", "--watch").Label("PATHS").String(
+		"Comma-delimited list of additional paths to watch")
+
+	os.Args[0] = "runapp"
+	args := opts.Parse(os.Args)
+	if len(args) != 1 {
+		opts.PrintUsage()
+		process.Exit(1)
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	appDir = filepath.Join(cwd, args[0])
+	appPat = filepath.Join(appDir, "*.go")
+	paths := []string{appDir}
+	for _, path := range strings.Split(*watch, ",") {
+		paths = append(paths, filepath.Join(cwd, path))
+	}
+
 	watcher := &fsevents.EventStream{
-		Paths:   []string{filepath.Join(cwd, "app")},
+		Paths:   paths,
 		Latency: 50 * time.Millisecond,
 		Flags:   fsevents.FileEvents | fsevents.WatchRoot,
 	}
+
 	watcher.Start()
 	process.SetExitHandler(killProcess)
 	for {
 		run()
 		<-watcher.Events
 	}
+
 }
