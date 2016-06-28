@@ -1,7 +1,7 @@
 // Public Domain (-) 2016 The GitFund Authors.
 // See the GitFund UNLICENSE file for details.
 
-// +build !appengine
+// +build !appenginevm
 package model
 
 import (
