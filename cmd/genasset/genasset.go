@@ -12,8 +12,13 @@ import (
 
 func main() {
 
+	if len(os.Args) != 3 {
+		fmt.Println("Usage: genasset PACKAGE_NAME MANIFEST_FILE")
+		os.Exit(1)
+	}
+
 	// Read the JSON assets manifest.
-	assets, err := ioutil.ReadFile("assets.json")
+	assets, err := ioutil.ReadFile(os.Args[2])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s", err)
 		return
@@ -25,10 +30,10 @@ func main() {
 	assets = bytes.Join(split, []byte{',', '\n', '\t'})
 
 	// Write out the package header.
-	fmt.Print(`package asset
+	fmt.Printf(`package %s
 
 var Files = map[string]string{
-	`)
+	`, os.Args[1])
 
 	// Write the asset mappings, footer, and close the file.
 	fmt.Print(string(assets))

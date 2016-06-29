@@ -22,8 +22,8 @@ import (
 var running *exec.Cmd
 
 var (
-	appDir = ""
-	appPat = ""
+	modDir = ""
+	modPat = ""
 	kill   = &sync.Mutex{}
 	killed = false
 	mutex  = &sync.Mutex{}
@@ -58,8 +58,8 @@ func killProcess() {
 
 func run() {
 	killProcess()
-	fmt.Println("\n------------------------- BUILDING AND RUNNING APP -------------------------\n")
-	matches, err := filepath.Glob(appPat)
+	fmt.Println("\n------------------------- BUILDING AND RUNNING MODULE -------------------------\n")
+	matches, err := filepath.Glob(modPat)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,12 +91,12 @@ func run() {
 
 func main() {
 
-	opts := optparse.New("Usage: runapp [OPTIONS] APP_DIR\n")
+	opts := optparse.New("Usage: run [OPTIONS] MODULE_DIR\n")
 
 	watch := opts.Flags("-w", "--watch").Label("PATHS").String(
 		"Comma-delimited list of additional paths to watch")
 
-	os.Args[0] = "runapp"
+	os.Args[0] = "run"
 	args := opts.Parse(os.Args)
 	if len(args) != 1 {
 		opts.PrintUsage()
@@ -108,9 +108,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	appDir = filepath.Join(cwd, args[0])
-	appPat = filepath.Join(appDir, "*.go")
-	paths := []string{appDir}
+	modDir = filepath.Join(cwd, args[0])
+	modPat = filepath.Join(modDir, "*.go")
+	paths := []string{modDir}
 	for _, path := range strings.Split(*watch, ",") {
 		paths = append(paths, filepath.Join(cwd, path))
 	}

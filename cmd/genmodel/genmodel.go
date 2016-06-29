@@ -176,9 +176,9 @@ const (
 			if noindex {
 				continue
 			}
-			fmt.Fprintf(buf, "\t%s_%s = \"%s =\"\n", kind, field.Name, name)
-			fmt.Fprintf(buf, "\t%s_%s_asc = \"%s\"\n", kind, field.Name, name)
+			fmt.Fprintf(buf, "\t%s_%s = \"%s\"\n", kind, field.Name, name)
 			fmt.Fprintf(buf, "\t%s_%s_desc = \"-%s\"\n", kind, field.Name, name)
+			fmt.Fprintf(buf, "\t%s_%s_eq = \"%s =\"\n", kind, field.Name, name)
 			fmt.Fprintf(buf, "\t%s_%s_gt = \"%s >\"\n", kind, field.Name, name)
 			fmt.Fprintf(buf, "\t%s_%s_gte = \"%s >=\"\n", kind, field.Name, name)
 			fmt.Fprintf(buf, "\t%s_%s_lt = \"%s <\"\n", kind, field.Name, name)
