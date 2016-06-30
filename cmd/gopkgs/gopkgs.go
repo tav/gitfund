@@ -11,12 +11,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/tav/golly/fsutil"
 	"github.com/tav/golly/log"
 	"github.com/tav/golly/optparse"
 	"github.com/tav/golly/process"
+	"golang.org/x/tools/go/vcs"
 )
 
 var (
@@ -35,8 +37,14 @@ type Diff struct {
 }
 
 type Entry struct {
+	Src string `json:"src"`
 	Rev string `json:"rev"`
 	VCS string `json:"vcs"`
+}
+
+type Manifest struct {
+	Packages map[string]*Entry `json:"packages"`
+	Toplevel []string          `json:"toplevel"`
 }
 
 func checkDeps(ignore string) {
@@ -48,39 +56,46 @@ func checkDeps(ignore string) {
 	if bytes.Equal(out, expected) {
 		return
 	}
-	local := map[string]Entry{}
+	local := &Manifest{map[string]*Entry{}, []string{}}
 	err = json.Unmarshal(expected, &local)
 	if err != nil {
 		log.Fatal(err)
 	}
-	stored := map[string]Entry{}
+	stored := &Manifest{map[string]*Entry{}, []string{}}
 	err = json.Unmarshal(out, &stored)
 	if err != nil {
 		log.Fatal(err)
 	}
 	diffs := map[string]Diff{}
-	for k, l := range local {
-		s := stored[k]
-		if l.Rev != s.Rev {
+	for k, l := range local.Packages {
+		s := stored.Packages[k]
+		if s == nil {
+			diffs[k] = Diff{l.Rev, "-"}
+		} else if l.Rev != s.Rev {
 			diffs[k] = Diff{l.Rev, s.Rev}
 		}
 	}
-	for k, s := range stored {
-		l := local[k]
-		if l.Rev != s.Rev {
+	for k, s := range stored.Packages {
+		l := local.Packages[k]
+		if l == nil {
+			diffs[k] = Diff{"-", s.Rev}
+		} else if l.Rev != s.Rev {
 			diffs[k] = Diff{l.Rev, s.Rev}
 		}
 	}
 	for pkg, diff := range diffs {
-		if diff.local == "" {
-			diff.local = "-"
-		}
-		if diff.stored == "" {
-			diff.stored = "-"
-		}
 		log.Errorf("Revision mismatch for package %s\n\n\tExpected: %s\n\t   Found: %s\n", pkg, diff.stored, diff.local)
 	}
 	process.Exit(1)
+}
+
+func contains(xs []string, s string) bool {
+	for _, elem := range xs {
+		if elem == s {
+			return true
+		}
+	}
+	return false
 }
 
 func genDeps(ignore string, writeFile bool) []byte {
@@ -96,14 +111,16 @@ func genDeps(ignore string, writeFile bool) []byte {
 
 	buf := &bytes.Buffer{}
 	gopath := filepath.SplitList(ctx.GOPATH)
-	pkgs := map[string]Entry{}
+	pkgs := map[string]*Entry{}
 	repos := map[string]bool{}
 	seen := map[string]bool{}
+	skip := strings.Split(ignore, ",")
+	toplevels := []string{}
 	workspaces := []string{}
 
-	var findPackages func(string)
+	var findPackages func(string, bool)
 
-	findPackages = func(path string) {
+	findPackages = func(path string, toplevel bool) {
 		pkg, err := ctx.ImportDir(path, 0)
 		if err != nil {
 			log.Fatal(err)
@@ -158,14 +175,19 @@ func genDeps(ignore string, writeFile bool) []byte {
 					log.Fatal(err)
 				}
 				rev := strings.TrimSpace(buf.String())
-				pkgs[root] = Entry{
+				pkgs[root] = &Entry{
 					Rev: rev,
 					VCS: vcs,
 				}
 				repos[root] = true
 			}
 			seen[imp] = true
-			findPackages(filepath.Join(wspace, imp))
+			setToplevel := toplevel
+			if toplevel && !contains(skip, root) {
+				toplevels = append(toplevels, imp)
+				setToplevel = false
+			}
+			findPackages(filepath.Join(wspace, imp), setToplevel)
 		}
 	}
 
@@ -173,15 +195,22 @@ func genDeps(ignore string, writeFile bool) []byte {
 		workspaces = append(workspaces, filepath.Join(workspace, "src"))
 	}
 
-	findPackages(modDir)
+	findPackages(modDir, true)
 
-	if ignore != "" {
-		for _, pkg := range strings.Split(ignore, ",") {
-			delete(pkgs, pkg)
-		}
+	sort.Strings(toplevels)
+	for _, pkg := range skip {
+		delete(pkgs, pkg)
 	}
 
-	out, err := json.MarshalIndent(pkgs, "", "  ")
+	for pkg, entry := range pkgs {
+		root, err := vcs.RepoRootForImportPath(pkg, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+		entry.Src = root.Repo
+	}
+
+	out, err := json.MarshalIndent(&Manifest{pkgs, toplevels}, "", "  ")
 	if err != nil {
 		log.Fatal(err)
 	}
