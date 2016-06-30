@@ -1,0 +1,19 @@
+# Public Domain (-) 2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+type: go
+
+commands:
+- "go build -o /module/bin/run github.com/tav/gitfund/app"
+
+files:
+- src: app
+  dst: go/src/github.com/tav/gitfund
+  ignore:
+    - "*.json"
+    - "*.yaml"
+    - "static/*"
+
+include:
+- :python
+- +/module/bin/run
