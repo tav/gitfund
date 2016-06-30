@@ -1,0 +1,123 @@
+#! /usr/bin/env python2
+
+# Public Domain (-) 2015-2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+"""Module Tarball Builder."""
+
+import sys
+import tarfile
+
+from os import getcwd, listdir, readlink
+from os.path import abspath, dirname, isabs, isdir, isfile, islink, join
+from subprocess import PIPE, Popen
+
+files = set()
+skip = set([
+    '/module/lib/python2.7/LICENSE.txt',
+    '/module/lib/python2.7/argparse.py',
+    '/module/lib/python2.7/argparse.pyc',
+    '/module/lib/python2.7/bsddb',
+    '/module/lib/python2.7/config',
+    '/module/lib/python2.7/ctypes',
+    '/module/lib/python2.7/distutils',
+    '/module/lib/python2.7/doctest.py',
+    '/module/lib/python2.7/doctest.pyc',
+    '/module/lib/python2.7/email',
+    '/module/lib/python2.7/ensurepip',
+    '/module/lib/python2.7/idlelib',
+    '/module/lib/python2.7/json/tests',
+    '/module/lib/python2.7/lib2to3',
+    '/module/lib/python2.7/lib-dynload/audioop.so',
+    '/module/lib/python2.7/lib-dynload/ossaudiodev.so',
+    '/module/lib/python2.7/lib-dynload/_multiprocessing.so',
+    '/module/lib/python2.7/lib-tk',
+    '/module/lib/python2.7/mailbox.py',
+    '/module/lib/python2.7/mailbox.pyc',
+    '/module/lib/python2.7/multiprocessing',
+    '/module/lib/python2.7/pdb.doc',
+    '/module/lib/python2.7/pydoc.py',
+    '/module/lib/python2.7/pydoc.pyc',
+    '/module/lib/python2.7/pydoc_data',
+    '/module/lib/python2.7/site-packages',
+    '/module/lib/python2.7/sqlite3',
+    '/module/lib/python2.7/test',
+    '/module/lib/python2.7/unittest',
+])
+
+def include(path, ignore=None, check_ldd=None, add_file=files.add):
+    if path in files:
+        return
+    if path in skip:
+        return
+    if ignore and ignore(path):
+        return
+    if islink(path):
+        add_file(path)
+        lpath = readlink(path)
+        if not isabs(lpath):
+            lpath = join(dirname(path), lpath)
+        include(lpath, ignore, check_ldd)
+        return
+    if isdir(path):
+        for sub in listdir(path):
+            spath = join(path, sub)
+            include(spath, ignore, check_ldd)
+        return
+    if not isfile(path):
+        print '!! ERROR: Not a regular file, symlink, or directory: %s !!' % path
+        sys.exit(1)
+    add_file(path)
+    if check_ldd or path.endswith('.so'):
+        ldd(path)
+
+def include_python():
+    include(relpath('bin', 'python2.7'), check_ldd=1)
+    include(relpath('pypkg'))
+    include(
+        relpath('lib', 'python2.7'),
+        lambda x: x.endswith('.pyc') or x.endswith('.pyo') or x.endswith('/README')
+        )
+
+def ldd(
+    path, args=["/lib/x86_64-linux-gnu/ld-2.19.so", ""],
+    env={"LD_LIBRARY_PATH": "/module/lib", "LD_TRACE_LOADED_OBJECTS": "1"}
+    ):
+    args[1] = path
+    proc = Popen(args, env=env, stdout=PIPE)
+    out = proc.communicate()[0]
+    if proc.returncode == 0:
+        if out == "\tstatically linked\n":
+            return
+        for line in out.splitlines():
+            line = line.split()
+            lib = None
+            if line[1] == '=>':
+                if not line[2].startswith('('):
+                    lib = line[2]
+            else:
+                lib = line[0]
+            if lib and lib != 'linux-vdso.so.1':
+                if line[0].startswith('/'):
+                    include(line[0], check_ldd=1)
+                include(lib, check_ldd=1)
+
+def relpath(*args):
+    return abspath(join(getcwd(), *args))
+
+for arg in sys.argv[1:]:
+    if arg == ':python':
+        include_python()
+    else:
+        check_ldd = 0
+        if arg.startswith('+'):
+            arg = arg[1:]
+            check_ldd = 1
+        if not isabs(arg):
+            arg = abspath(arg)
+        include(arg, check_ldd=check_ldd)
+
+tar = tarfile.open('module.tar', 'w')
+for file in sorted(files):
+    tar.add(file)
+tar.close()

@@ -1,0 +1,18 @@
+#! /usr/bin/env python2
+
+# Public Domain (-) 2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+"""Environment Exporter."""
+
+import sys
+
+from json import dumps as encode_json
+from os import environ
+
+env_vars = ['PATH', 'PYTHONPATH'] + sys.argv[1:]
+env = dict((v, environ.get(v, '')) for v in env_vars)
+
+f = open('env.json', 'wb')
+f.write(encode_json(env))
+f.close()
