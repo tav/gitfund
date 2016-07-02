@@ -1,0 +1,67 @@
+{
+  "packages": {
+    "github.com/bradfitz/gomemcache": {
+      "src": "https://github.com/bradfitz/gomemcache",
+      "rev": "4faecadd4f695d18a912ba110120fcfd460aca98",
+      "vcs": "git"
+    },
+    "github.com/golang/protobuf": {
+      "src": "https://github.com/golang/protobuf",
+      "rev": "655cdfa588ea190e901bc5590e65d5621688847c",
+      "vcs": "git"
+    },
+    "github.com/mgutz/ansi": {
+      "src": "https://github.com/mgutz/ansi",
+      "rev": "376eb392d7d7e2ae025da0037c73cf8c20a428d8",
+      "vcs": "git"
+    },
+    "github.com/tav/golly": {
+      "src": "https://github.com/tav/golly",
+      "rev": "8eb0428fbc182519c7a6fba11355f7b622f4206c",
+      "vcs": "git"
+    },
+    "golang.org/x/crypto": {
+      "src": "https://go.googlesource.com/crypto",
+      "rev": "811831de4c4dd03a0b8737233af3b36852386373",
+      "vcs": "git"
+    },
+    "golang.org/x/net": {
+      "src": "https://go.googlesource.com/net",
+      "rev": "bc3663df0ac92f928d419e31e0d2af22e683a5a2",
+      "vcs": "git"
+    },
+    "golang.org/x/oauth2": {
+      "src": "https://go.googlesource.com/oauth2",
+      "rev": "65a8d08c6292395d47053be10b3c5e91960def76",
+      "vcs": "git"
+    },
+    "google.golang.org/api": {
+      "src": "https://code.googlesource.com/google-api-go-client",
+      "rev": "63ade871fd3aec1225809d496e81ec91ab76ea29",
+      "vcs": "git"
+    },
+    "google.golang.org/appengine": {
+      "src": "https://github.com/golang/appengine",
+      "rev": "267c27e7492265b84fc6719503b14a1e17975d79",
+      "vcs": "git"
+    },
+    "google.golang.org/cloud": {
+      "src": "https://code.googlesource.com/gocloud",
+      "rev": "ebfe3819c9ab4acaf086ae57e4cbd7dee683baf0",
+      "vcs": "git"
+    },
+    "google.golang.org/grpc": {
+      "src": "https://github.com/grpc/grpc-go",
+      "rev": "69420784d409f9ff88b424436f52001b26144e20",
+      "vcs": "git"
+    }
+  },
+  "toplevel": [
+    "github.com/bradfitz/gomemcache/memcache",
+    "github.com/tav/golly/log",
+    "golang.org/x/oauth2/jwt",
+    "google.golang.org/appengine/datastore",
+    "google.golang.org/cloud/logging",
+    "google.golang.org/cloud/storage"
+  ]
+}
