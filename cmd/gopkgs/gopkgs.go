@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	modDir   = ""
+	svcDir   = ""
 	vcsTypes = []string{"git", "hg"}
 )
 
@@ -195,7 +195,7 @@ func genDeps(ignore string, writeFile bool) []byte {
 		workspaces = append(workspaces, filepath.Join(workspace, "src"))
 	}
 
-	findPackages(modDir, true)
+	findPackages(svcDir, true)
 
 	sort.Strings(toplevels)
 	for _, pkg := range skip {
@@ -227,12 +227,12 @@ func genDeps(ignore string, writeFile bool) []byte {
 }
 
 func getManifestPath() string {
-	return filepath.Join(modDir, ".gopkgs.json")
+	return filepath.Join(svcDir, ".gopkgs.json")
 }
 
 func main() {
 
-	opts := optparse.New("Usage: gopkgs [OPTIONS] MODULE_DIR\n")
+	opts := optparse.New("Usage: gopkgs [OPTIONS] SERVICE_DIR\n")
 	opts.SetVersion("0.1")
 
 	check := opts.Flags("-c", "--check").Bool(
@@ -252,7 +252,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("couldn't get working directory path: %s", err)
 	}
-	modDir = filepath.Join(cwd, args[0])
+	svcDir = filepath.Join(cwd, args[0])
 
 	if *check {
 		checkDeps(*ignore)

@@ -52,17 +52,17 @@ type Spec struct {
 
 func build(appID string, path string) {
 
-	moduleDir, err := filepath.Abs(path)
+	serviceDir, err := filepath.Abs(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	moduleID := filepath.Base(moduleDir)
-	moduleImage := appID + "/" + moduleID + ".generator"
-	rootDir := filepath.Dir(moduleDir)
+	serviceID := filepath.Base(serviceDir)
+	serviceImage := appID + "/" + serviceID + ".generator"
+	rootDir := filepath.Dir(serviceDir)
 	envDir := filepath.Join(rootDir, "environ")
 	buildRoot := filepath.Join(envDir, "build")
-	buildDir := filepath.Join(buildRoot, moduleID)
+	buildDir := filepath.Join(buildRoot, serviceID)
 	imgDir := filepath.Join(buildDir, "image")
 
 	// Ensure docker is running.
@@ -84,7 +84,7 @@ func build(appID string, path string) {
 		}
 	}
 
-	// Remove the module build directory if it exists already.
+	// Remove the service build directory if it exists already.
 	if exists, _ := fsutil.Exists(buildDir); exists {
 		err = os.RemoveAll(buildDir)
 		if err != nil {
@@ -92,7 +92,7 @@ func build(appID string, path string) {
 		}
 	}
 
-	// Create a pristine module build directory.
+	// Create a pristine service build directory.
 	err = os.Mkdir(buildDir, 0777)
 	if err != nil {
 		log.Fatal(err)
@@ -102,16 +102,16 @@ func build(appID string, path string) {
 	buf := &bytes.Buffer{}
 	fmt.Fprintf(buf, "FROM  %s/buildbase\n\n", appID)
 
-	// Include the base Dockerfile for the module if it exists.
-	baseDocker := filepath.Join(envDir, moduleID+".Dockerfile")
+	// Include the base Dockerfile for the service if it exists.
+	baseDocker := filepath.Join(envDir, serviceID+".Dockerfile")
 	if exists, _ := fsutil.FileExists(baseDocker); exists {
 		content := read(baseDocker)
 		buf.Write(content)
 		buf.Write([]byte{'\n'})
 	}
 
-	// Read the build spec for the module.
-	file := read(filepath.Join(envDir, moduleID+".build.yaml"))
+	// Read the build spec for the service.
+	file := read(filepath.Join(envDir, serviceID+".build.yaml"))
 	spec := &Spec{}
 	err = yaml.Unmarshal(file, spec)
 	if err != nil {
@@ -121,7 +121,7 @@ func build(appID string, path string) {
 	// Add commands to install dependencies for the given build type.
 	switch spec.Type {
 	case "go":
-		file := read(filepath.Join(moduleDir, ".gopkgs.json"))
+		file := read(filepath.Join(serviceDir, ".gopkgs.json"))
 		manifest := &GoManifest{map[string]GoPackage{}, []string{}}
 		err = json.Unmarshal(file, &manifest)
 		if err != nil {
@@ -157,10 +157,10 @@ func build(appID string, path string) {
 	default:
 		log.Fatalf(
 			"unsupported build type %q specified in the environ/%s.build.yaml file",
-			spec.Type, moduleID)
+			spec.Type, serviceID)
 	}
 
-	// Write the module files to a tarfile.
+	// Write the service files to a tarfile.
 	tbuf := &bytes.Buffer{}
 	tarfile := tar.NewWriter(tbuf)
 	chdir(rootDir)
@@ -183,13 +183,13 @@ func build(appID string, path string) {
 	write(filepath.Join(buildDir, tname), tdata)
 
 	// Add the tarfile to the Dockerfile.
-	fmt.Fprintf(buf, "ADD %s /module/\n", tname)
+	fmt.Fprintf(buf, "ADD %s /service/\n", tname)
 
 	// Write out the build commands.
 	for _, cmd := range spec.Commands {
 		fmt.Fprintf(buf, "RUN %s\n\n", cmd)
 	}
-	fmt.Fprintf(buf, "RUN build-module-tarball %s\n", strings.Join(spec.Include, " "))
+	fmt.Fprintf(buf, "RUN build-service-tarball %s\n", strings.Join(spec.Include, " "))
 	buf.WriteString("RUN export-env\n")
 
 	// Write out the new Dockerfile.
@@ -200,10 +200,10 @@ func build(appID string, path string) {
 	chdir(envDir, "buildbase")
 	run("docker", "build", "-t", appID+"/buildbase", ".")
 
-	// Create the module image.
-	log.Infof("Building the %s/%s.generator image", appID, moduleID)
+	// Create the service image.
+	log.Infof("Building the %s/%s.generator image", appID, serviceID)
 	chdir(buildDir)
-	run("docker", "build", "-t", moduleImage, ".")
+	run("docker", "build", "-t", serviceImage, ".")
 
 	// Create the final image directory.
 	err = os.Mkdir(imgDir, 0777)
@@ -211,12 +211,12 @@ func build(appID string, path string) {
 		log.Fatal(err)
 	}
 
-	// Copy assets from the module image.
-	log.Infof("Copying built assets from %s", moduleImage)
-	cid := getOutput("docker", "create", moduleImage) + ":/module/"
+	// Copy assets from the service image.
+	log.Infof("Copying built assets from %s", serviceImage)
+	cid := getOutput("docker", "create", serviceImage) + ":/service/"
 	chdir(imgDir)
 	run("docker", "cp", cid+"env.json", ".")
-	run("docker", "cp", cid+"module.tar", ".")
+	run("docker", "cp", cid+"service.tar", ".")
 
 	// Read the env data.
 	envData := read("env.json")
@@ -243,20 +243,20 @@ func build(appID string, path string) {
 			buf.WriteString(" \\\n    ")
 		}
 	}
-	buf.WriteString("ADD module.tar /\n")
+	buf.WriteString("ADD service.tar /\n")
 	switch spec.Type {
 	case "go":
-		buf.WriteString(`ENTRYPOINT ["/module/bin/run"]`)
+		buf.WriteString(`ENTRYPOINT ["/service/bin/run"]`)
 	default:
 		log.Fatalf(
 			"unsupported build type %q specified in the environ/%s.build.yaml file",
-			spec.Type, moduleID)
+			spec.Type, serviceID)
 	}
 	write(filepath.Join(imgDir, "Dockerfile"), buf.Bytes())
 
 	// Build the final image.
-	log.Infof("Building the final %s/%s image", appID, moduleID)
-	run("docker", "build", "-t", appID+"/"+moduleID, ".")
+	log.Infof("Building the final %s/%s image", appID, serviceID)
+	run("docker", "build", "-t", appID+"/"+serviceID, ".")
 
 }
 
@@ -346,7 +346,7 @@ func write(path string, contents []byte) {
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Println("Usage: builder APP_ID MODULE_DIR")
+		fmt.Println("Usage: builder APP_ID SERVICE_DIR")
 		os.Exit(1)
 	}
 	build(os.Args[1], os.Args[2])
