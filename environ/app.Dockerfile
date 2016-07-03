@@ -2,5 +2,5 @@
 # See the GitFund UNLICENSE file for details.
 
 # Python Dependencies
-RUN pip install --target /module/pypkg pygments==2.1.3 && \
-    python -m compileall /module/pypkg
+RUN pip install --target /service/pypkg pygments==2.1.3 && \
+    python -m compileall /service/pypkg

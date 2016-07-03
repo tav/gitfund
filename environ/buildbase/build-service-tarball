@@ -3,7 +3,7 @@
 # Public Domain (-) 2015-2016 The GitFund Authors.
 # See the GitFund UNLICENSE file for details.
 
-"""Module Tarball Builder."""
+"""Service Tarball Builder."""
 
 import sys
 import tarfile
@@ -14,35 +14,35 @@ from subprocess import PIPE, Popen
 
 files = set()
 skip = set([
-    '/module/lib/python2.7/LICENSE.txt',
-    '/module/lib/python2.7/argparse.py',
-    '/module/lib/python2.7/argparse.pyc',
-    '/module/lib/python2.7/bsddb',
-    '/module/lib/python2.7/config',
-    '/module/lib/python2.7/ctypes',
-    '/module/lib/python2.7/distutils',
-    '/module/lib/python2.7/doctest.py',
-    '/module/lib/python2.7/doctest.pyc',
-    '/module/lib/python2.7/email',
-    '/module/lib/python2.7/ensurepip',
-    '/module/lib/python2.7/idlelib',
-    '/module/lib/python2.7/json/tests',
-    '/module/lib/python2.7/lib2to3',
-    '/module/lib/python2.7/lib-dynload/audioop.so',
-    '/module/lib/python2.7/lib-dynload/ossaudiodev.so',
-    '/module/lib/python2.7/lib-dynload/_multiprocessing.so',
-    '/module/lib/python2.7/lib-tk',
-    '/module/lib/python2.7/mailbox.py',
-    '/module/lib/python2.7/mailbox.pyc',
-    '/module/lib/python2.7/multiprocessing',
-    '/module/lib/python2.7/pdb.doc',
-    '/module/lib/python2.7/pydoc.py',
-    '/module/lib/python2.7/pydoc.pyc',
-    '/module/lib/python2.7/pydoc_data',
-    '/module/lib/python2.7/site-packages',
-    '/module/lib/python2.7/sqlite3',
-    '/module/lib/python2.7/test',
-    '/module/lib/python2.7/unittest',
+    '/service/lib/python2.7/LICENSE.txt',
+    '/service/lib/python2.7/argparse.py',
+    '/service/lib/python2.7/argparse.pyc',
+    '/service/lib/python2.7/bsddb',
+    '/service/lib/python2.7/config',
+    '/service/lib/python2.7/ctypes',
+    '/service/lib/python2.7/distutils',
+    '/service/lib/python2.7/doctest.py',
+    '/service/lib/python2.7/doctest.pyc',
+    '/service/lib/python2.7/email',
+    '/service/lib/python2.7/ensurepip',
+    '/service/lib/python2.7/idlelib',
+    '/service/lib/python2.7/json/tests',
+    '/service/lib/python2.7/lib2to3',
+    '/service/lib/python2.7/lib-dynload/audioop.so',
+    '/service/lib/python2.7/lib-dynload/ossaudiodev.so',
+    '/service/lib/python2.7/lib-dynload/_multiprocessing.so',
+    '/service/lib/python2.7/lib-tk',
+    '/service/lib/python2.7/mailbox.py',
+    '/service/lib/python2.7/mailbox.pyc',
+    '/service/lib/python2.7/multiprocessing',
+    '/service/lib/python2.7/pdb.doc',
+    '/service/lib/python2.7/pydoc.py',
+    '/service/lib/python2.7/pydoc.pyc',
+    '/service/lib/python2.7/pydoc_data',
+    '/service/lib/python2.7/site-packages',
+    '/service/lib/python2.7/sqlite3',
+    '/service/lib/python2.7/test',
+    '/service/lib/python2.7/unittest',
 ])
 
 def include(path, ignore=None, check_ldd=None, add_file=files.add):
@@ -81,7 +81,7 @@ def include_python():
 
 def ldd(
     path, args=["/lib/x86_64-linux-gnu/ld-2.19.so", ""],
-    env={"LD_LIBRARY_PATH": "/module/lib", "LD_TRACE_LOADED_OBJECTS": "1"}
+    env={"LD_LIBRARY_PATH": "/service/lib", "LD_TRACE_LOADED_OBJECTS": "1"}
     ):
     args[1] = path
     proc = Popen(args, env=env, stdout=PIPE)
@@ -117,7 +117,7 @@ for arg in sys.argv[1:]:
             arg = abspath(arg)
         include(arg, check_ldd=check_ldd)
 
-tar = tarfile.open('module.tar', 'w')
+tar = tarfile.open('service.tar', 'w')
 for file in sorted(files):
     tar.add(file)
 tar.close()

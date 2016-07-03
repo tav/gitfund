@@ -25,14 +25,14 @@ RUN curl -O https://storage.googleapis.com/golang/go1.7beta2.linux-amd64.tar.gz 
   tar -C /usr/local -xzf go1.7beta2.linux-amd64.tar.gz && \
   rm go1.7beta2.linux-amd64.tar.gz
 
-# Module Directory
-RUN mkdir module
-WORKDIR /module
+# Service Directory
+RUN mkdir service
+WORKDIR /service
 
 # Build Environment
-ENV CPPFLAGS=-I/module/include \
-    LDFLAGS=-L/module/lib \
-    LD_LIBRARY_PATH=/module/lib
+ENV CPPFLAGS=-I/service/include \
+    LDFLAGS=-L/service/lib \
+    LD_LIBRARY_PATH=/service/lib
 
 # zlib
 RUN curl -O http://zlib.net/zlib-1.2.8.tar.gz && \
@@ -40,49 +40,49 @@ RUN curl -O http://zlib.net/zlib-1.2.8.tar.gz && \
   tar -xzf zlib-1.2.8.tar.gz && \
   cd zlib-1.2.8 && \
   ./configure --shared && \
-  make install prefix=/module && \
-  rm -rf /module/zlib-*
+  make install prefix=/service && \
+  rm -rf /service/zlib-*
 
 # pcre
 RUN curl -O ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.39.tar.bz2 && \
   verify-checksum pcre-8.39.tar.bz2 8b0f14ae5947c4b2d74876a795b04e532fd71c2479a64dbe0ed817e7c7894ea3cae533413de8c17322d305cb7f4e275d72b43e4e828eaca77dc4bcaf04529cf6 && \
   tar -xjf pcre-8.39.tar.bz2 && \
   cd pcre-8.39 && \
-  ./configure --prefix=/module && \
+  ./configure --prefix=/service && \
   make && \
   make install && \
-  rm -rf /module/pcre-*
+  rm -rf /service/pcre-*
 
 # openssl
 RUN curl -O https://www.openssl.org/source/openssl-1.0.2h.tar.gz && \
   verify-checksum openssl-1.0.2h.tar.gz 780601f6f3f32f42b6d7bbc4c593db39a3575f9db80294a10a68b2b0bb79448d9bd529ca700b9977354cbdfc65887c76af0aa7b90d3ee421f74ab53e6f15c303 && \
   tar -xzf openssl-1.0.2h.tar.gz && \
   cd openssl-1.0.2h && \
-  ./Configure linux-x86_64 shared no-idea no-krb5 no-mdc2 zlib --prefix=/module --openssldir=/module/share/ssl -L/module/lib -I/module/include && \
+  ./Configure linux-x86_64 shared no-idea no-krb5 no-mdc2 zlib --prefix=/service --openssldir=/service/share/ssl -L/service/lib -I/service/include && \
   make depend && \
   make && \
   make install && \
-  rm -rf /module/openssl-*
+  rm -rf /service/openssl-*
 
 # Python
 RUN curl -O https://www.python.org/ftp/python/2.7.12/Python-2.7.12.tgz && \
   verify-checksum Python-2.7.12.tgz e3c04b1c66ff659c08e09a5adc34fd856ca0c786e5820c05471747416fef38555f1711978ac5e81ff4fdf7c16311796212f638e5e2d43e2404b2a42fc139edb0 && \
   tar -xzf Python-2.7.12.tgz && \
   cd Python-2.7.12 && \
-  ./configure --enable-unicode=ucs2 --enable-ipv6 --prefix=/module && \
+  ./configure --enable-unicode=ucs2 --enable-ipv6 --prefix=/service && \
   make && \
   make install && \
-  rm -rf /module/Python-*
+  rm -rf /service/Python-*
 
 # Build Utilities
-ADD build-module-tarball bin/
+ADD build-service-tarball bin/
 ADD export-env bin/
 
 # Runtime Environment
-ENV GOBIN=/module/bin \
-    GOPATH=/module/go \
-    PATH=/module/bin:/module/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    PYTHONPATH=/module/pypkg
+ENV GOBIN=/service/bin \
+    GOPATH=/service/go \
+    PATH=/service/bin:/service/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PYTHONPATH=/service/pypkg
 
 # Pip Support
 RUN python -m ensurepip --upgrade && \
