@@ -15,13 +15,11 @@ import (
 	"unicode/utf8"
 
 	"github.com/tav/gitfund/app/model"
-	"google.golang.org/appengine/datastore"
 )
 
 var (
-	typeOfByteSlice  = reflect.TypeOf([]byte(nil))
-	typeOfByteString = reflect.TypeOf(datastore.ByteString(nil))
-	typeOfTime       = reflect.TypeOf(time.Time{})
+	typeOfByteSlice = reflect.TypeOf([]byte(nil))
+	typeOfTime      = reflect.TypeOf(time.Time{})
 )
 
 type Prop struct {
@@ -66,8 +64,9 @@ package model
 
 import (
 	"fmt"
-	"google.golang.org/appengine/datastore"
 	"time"
+
+	"google.golang.org/cloud/datastore"
 )
 
 const (
@@ -128,8 +127,6 @@ const (
 			switch ft {
 			case typeOfByteSlice:
 				typ = "[]byte"
-			case typeOfByteString:
-				typ = "datastore.ByteString"
 			case typeOfTime:
 				typ = "time.Time"
 			default:
@@ -145,7 +142,6 @@ const (
 					st := ft.Elem()
 					switch ft.Elem() {
 					case typeOfByteSlice:
-						noindex = true
 						typ = "[]byte"
 					default:
 						slices = append(slices, field.Name)
