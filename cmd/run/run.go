@@ -115,6 +115,14 @@ func main() {
 		paths = append(paths, filepath.Join(cwd, path))
 	}
 
+	if os.Getenv("DATASTORE_EMULATOR_HOST") == "" {
+		os.Setenv("DATASTORE_EMULATOR_HOST", "localhost:8801")
+	}
+
+	if os.Getenv("PUBSUB_EMULATOR_HOST") == "" {
+		os.Setenv("PUBSUB_EMULATOR_HOST", "localhost:8802")
+	}
+
 	watcher := &fsevents.EventStream{
 		Paths:   paths,
 		Latency: 50 * time.Millisecond,
