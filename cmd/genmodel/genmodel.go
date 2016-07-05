@@ -263,7 +263,6 @@ func (%s *%s) Save() ([]datastore.Property, error) {
 				if prop.noindex {
 					fmt.Fprint(buf, "\t\t\tNoIndex: true,\n")
 				}
-				fmt.Fprint(buf, "\t\t\tMultiple: true,\n")
 				fmt.Fprint(buf, "\t\t\tValue: elem,\n")
 				fmt.Fprint(buf, "\t\t})\n")
 				fmt.Fprint(buf, "\t}\n")
