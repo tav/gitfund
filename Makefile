@@ -26,10 +26,9 @@ app/asset/files.go: environ/assets.json environ/genasset
 	@mv files.go app/asset/files.go
 
 app/model/fields.go: environ/genmodel
-	@echo $(HDR) "Generating model/fields.go"
-	@./environ/genmodel > fields.go
-	@gofmt -w fields.go
-	@mv fields.go app/model/fields.go
+	@echo $(HDR) "Generating model/fields.go + web/model.go"
+	@./environ/genmodel app/model/fields.go app/web/model.go
+	@gofmt -w app/model/fields.go app/web/model.go
 
 app/template/ego.go: template/*.ego
 	@echo $(HDR) "Generating template/ego.go"
@@ -49,6 +48,7 @@ clean: ## Remove all built/generated files and directories
 	 app/asset/files.go \
 	 app/model/fields.go \
 	 app/template/ego.go \
+	 app/web/model.go \
 	 environ/assets.json \
 	 environ/build \
 	 environ/builder \
@@ -81,7 +81,7 @@ environ/genasset: cmd/genasset/genasset.go
 
 environ/genmodel: cmd/genmodel/genmodel.go app/model/model.go app/model/registry.go
 	@echo $(HDR) "Building genmodel"
-	@go build -a -o environ/genmodel github.com/tav/gitfund/cmd/genmodel
+	@go build -o environ/genmodel github.com/tav/gitfund/cmd/genmodel
 
 environ/gopkgs: cmd/gopkgs/gopkgs.go
 	@echo $(HDR) "Building gopkgs"
@@ -117,8 +117,7 @@ watch: ## Automatically run `make all` when a relevant file change is detected
 	 -e app/.gopkgs.json \
 	 -e app/asset/files.go \
 	 -e app/model/fields.go \
-	 -e fields.go \
-	 -e files.go \
+	 -e app/web/model.go \
 	 -e environ/build \
 	 -e environ/builder \
 	 -e environ/genasset \
