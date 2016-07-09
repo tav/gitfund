@@ -3,7 +3,7 @@
 
 APP_FILES := $(shell find app -name \*.go -print)
 BROWSER_FILES := $(shell find browser -type f -print)
-GENERATED := app/asset/files.go app/model/fields.go app/template/ego.go
+GENERATED := app/asset/generated.go app/model/generated.go app/template/generated.go
 HDR = `date +'[%H:%M:%S]'` ">>"
 
 .PHONY: all buildapp clean datastore deployapp describe gopkgs indexes memcached pubsub runapp vacuum watch watchloop wipedata
@@ -18,22 +18,22 @@ app/.gopkgs.json: $(APP_FILES) environ/gopkgs $(GENERATED)
 	@echo $(HDR) "Generating gopkgs.json"
 	@./environ/gopkgs app -i github.com/tav/gitfund
 
-app/asset/files.go: environ/assets.json environ/genasset
-	@echo $(HDR) "Generating asset/files.go"
-	@./environ/genasset asset environ/assets.json > files.go
-	@gofmt -w files.go
+app/asset/generated.go: environ/assets.json environ/genasset
+	@echo $(HDR) "Generating asset/generated.go"
+	@./environ/genasset asset environ/assets.json > generated.go
+	@gofmt -w generated.go
 	@mkdir -p app/asset
-	@mv files.go app/asset/files.go
+	@mv generated.go app/asset/generated.go
 
-app/model/fields.go: environ/genmodel
-	@echo $(HDR) "Generating model/fields.go + web/model.go"
-	@./environ/genmodel app/model/fields.go app/web/model.go
-	@gofmt -w app/model/fields.go app/web/model.go
+app/model/generated.go: environ/genmodel
+	@echo $(HDR) "Generating model/generated.go + web/generated.go"
+	@./environ/genmodel app/model/generated.go app/web/generated.go
+	@gofmt -w app/model/generated.go app/web/generated.go
 
-app/template/ego.go: template/*.ego
-	@echo $(HDR) "Generating template/ego.go"
-	@ego -o app/template/ego.go -package template
-	@gofmt -w app/template/ego.go
+app/template/generated.go: template/*.ego
+	@echo $(HDR) "Generating template/generated.go"
+	@ego -o app/template/generated.go -package template
+	@gofmt -w app/template/generated.go
 
 buildapp: environ/builder environ/gopkgs $(GENERATED) ## Build the docker image for the app service
 	@echo $(HDR) "Ensuring local packages matches the gopkgs manifest"
@@ -45,10 +45,10 @@ clean: ## Remove all built/generated files and directories
 	@assetgen assetgen.yaml --clean
 	@rm -rf \
 	 .emulators \
-	 app/asset/files.go \
-	 app/model/fields.go \
-	 app/template/ego.go \
-	 app/web/model.go \
+	 app/asset/generated.go \
+	 app/model/generated.go \
+	 app/template/generated.go \
+	 app/web/generated.go \
 	 environ/assets.json \
 	 environ/build \
 	 environ/builder \
@@ -56,8 +56,7 @@ clean: ## Remove all built/generated files and directories
 	 environ/genmodel \
 	 environ/gopkgs \
 	 environ/run \
-	 fields.go \
-	 files.go
+	 generated.go
 
 datastore: ## Run the local datastore emulator
 	@mkdir -p .emulators/datastore/WEB-INF
@@ -80,8 +79,9 @@ environ/genasset: cmd/genasset/genasset.go
 	@go build -a -o environ/genasset github.com/tav/gitfund/cmd/genasset
 
 environ/genmodel: cmd/genmodel/genmodel.go app/model/model.go app/model/registry.go
+	@rm -f app/model/generated.go app/web/generated.go
 	@echo $(HDR) "Building genmodel"
-	@go build -o environ/genmodel github.com/tav/gitfund/cmd/genmodel
+	@go build -a -o environ/genmodel github.com/tav/gitfund/cmd/genmodel
 
 environ/gopkgs: cmd/gopkgs/gopkgs.go
 	@echo $(HDR) "Building gopkgs"
@@ -115,15 +115,17 @@ watch: ## Automatically run `make all` when a relevant file change is detected
 	@fswatch -0 -o \
 	 -e .emulators \
 	 -e app/.gopkgs.json \
-	 -e app/asset/files.go \
-	 -e app/model/fields.go \
-	 -e app/web/model.go \
+	 -e app/asset/generated.go \
+	 -e app/model/generated.go \
+	 -e app/template/generated.go \
+	 -e app/web/generated.go \
 	 -e environ/build \
 	 -e environ/builder \
 	 -e environ/genasset \
 	 -e environ/genmodel \
 	 -e environ/gopkgs \
 	 -e environ/run \
+	 -e generated.go \
 	 . | xargs -0 -n1 -I{} make all
 
 watchloop: ## Use this instead of `make watch` if you don't have fswatch installed
