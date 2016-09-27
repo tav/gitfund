@@ -6,6 +6,7 @@ package web
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/tav/gitfund/app/config"
@@ -15,10 +16,16 @@ import (
 	"google.golang.org/cloud/storage"
 )
 
+var (
+	blobBucket   *storage.BucketHandle
+	cloudClients sync.Once
+)
+
 // We save references to the various clients as globals in the config package so
 // that they can be accessed by the packages that this web package depends on —
 // so as to not cause circular dependencies.
-func initCloud(c *Context) {
+func initCloudClients() {
+	c := BackgroundContext()
 	blobClient, err := storage.NewClient(c)
 	if err != nil {
 		panic(fmt.Errorf("web: failed to initiate blobstore client: %s", err))
@@ -43,6 +50,7 @@ func initCloud(c *Context) {
 	if port == "" {
 		port = "11211"
 	}
+	blobBucket = blobClient.Bucket(config.BlobStorageBucket)
 	cacheClient := memcache.New(fmt.Sprintf("%s:%s", host, port))
 	config.BlobClient = blobClient
 	config.CacheClient = cacheClient
