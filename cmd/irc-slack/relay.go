@@ -11,12 +11,11 @@ import (
 	"os"
 	"strings"
 
-	"gopkg.in/yaml.v1"
-
 	"github.com/nlopes/slack"
 	"github.com/tav/golly/optparse"
 	"github.com/tav/golly/process"
 	"github.com/thoj/go-ircevent"
+	"gopkg.in/yaml.v2"
 )
 
 var (
