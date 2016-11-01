@@ -9,11 +9,17 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/tav/gitfund/app/config"
 	"github.com/tav/golly/log"
+)
+
+const (
+	StandardRequest = iota
+	CronRequest
 )
 
 var (
@@ -27,6 +33,7 @@ var (
 var (
 	healthOK = []byte{'o', 'k'}
 	serveMux = mux{}
+	shutdown = []Handler{}
 	startup  = []Handler{}
 )
 
@@ -37,6 +44,10 @@ type Handler func(*Context)
 type raise301 struct {
 	url string
 }
+
+// raise301 can be used as a value to panic in order to interrupt the control
+// flow and raise a 304 Not Modified.
+type raise304 struct{}
 
 // raise404 can be used as a value to panic in order to interrupt the control
 // flow and raise a 404 Not Found.
@@ -98,28 +109,41 @@ func writeResponse(c *Context, w http.ResponseWriter) {
 	} else {
 		out = c.buffer.Bytes()
 	}
+	hdrs.Set("Content-Length", strconv.FormatInt(int64(len(out))))
 	if !ct {
+		// TODO(tav): Might not be wise to default to text/html, since if a
+		// handler serves content of a different type without setting the
+		// appropiate content type header, it could be potentially abused as an
+		// attack vector.
 		hdrs.Set("Content-Type", "text/html; charset=utf-8")
 	}
 	for _, v := range c.cookies {
 		hdrs.Set("Set-Cookie", v)
 	}
 	w.WriteHeader(c.status)
+	if c.request.Method == "HEAD" || c.status == 304 {
+		return
+	}
 	if len(out) != 0 {
 		w.Write(out)
 	}
 }
 
+// To handle the site root, the Path should be set to "/", but if handling a
+// subpath, the trailing "/" should be left out.
 type Dispatcher struct {
 	Path    string
 	Routes  Routes
 	Lookup  func(*Context) (*Route, bool)
 	Statics map[string]*Static
+	Workers map[string]*Worker
+	Queues  []*config.Queue
 }
 
-func (d *Dispatcher) Dispatch(w http.ResponseWriter, r *http.Request) {
-	c := newContext(r, 0)
+func (d *Dispatcher) dispatch(w http.ResponseWriter, r *http.Request) {
+	c := newContext(r)
 	defer func() {
+		c.Cancel()
 		if err := recover(); err != nil {
 			c.buffer.Reset()
 			if redir, ok := err.(raise301); ok {
@@ -129,8 +153,10 @@ func (d *Dispatcher) Dispatch(w http.ResponseWriter, r *http.Request) {
 				c.status = 301
 			} else if _, ok := err.(raise404); ok {
 				c.serve404()
+			} else if _, ok := err.(raise304); ok {
+				c.status = 304
 			} else {
-				c.SetString("fatal/error", fmt.Sprintf("%s", err))
+				c.SetString("fatal/error", fmt.Sprint(err))
 				c.SetString("fatal/stacktrace", string(debug.Stack()))
 				c.Errorf("%v\n%s", err, c.GetString("fatal/stacktrace"))
 				c.serve500()
@@ -138,11 +164,12 @@ func (d *Dispatcher) Dispatch(w http.ResponseWriter, r *http.Request) {
 		}
 		writeResponse(c, w)
 	}()
-	if !DevServer {
+	cronRequest := r.Header.Get("X-AppEngine-Cron") != ""
+	if !DevServer && !cronRequest {
 		badURL := false
 		if r.TLS == nil {
 			badURL = true
-		} else if config.EnsureHost && r.Host != config.CanonicalHost && !c.IsCronRequest() {
+		} else if config.EnsureHost && r.Host != config.CanonicalHost {
 			badURL = true
 		}
 		if badURL {
@@ -169,18 +196,72 @@ func (d *Dispatcher) Dispatch(w http.ResponseWriter, r *http.Request) {
 	if len(path) > 0 && path[0] == '/' {
 		path = path[1:]
 	}
-	elems := strings.Split(path, "/")
+	var routeName string
 	if path == "" {
-		elems[0] = "/"
-	}
-	pathArgs := []string{}
-	for _, elem := range elems[1:] {
-		if elem != "" {
-			pathArgs = append(pathArgs, elem)
+		routeName = "/"
+	} else {
+		elems := strings.Split(path, "/")
+		routeName = elems[0]
+		if routeName == "_queues" {
+			if len(elems) == 1 {
+				c.serve404()
+				return
+			}
+			switch elems[1] {
+			case "init":
+				if len(elems) != 3 {
+					c.serve404()
+					return
+				}
+				err := d.initQueues(c, elems[2])
+				if err != nil {
+					c.Errorf("web: couldn't init queues: %s", err)
+					c.SetString("fatal/error", err.Error())
+					c.serve500()
+					return
+				}
+				c.Write(healthOK)
+				return
+			case "handle":
+				if len(elems) != 4 {
+					c.serve404()
+					return
+				}
+				retry, err := d.callWorker(c, elems[2], elems[3])
+				if err != nil {
+					c.Errorf("web: failed to handle worker in the %q queue: %s", elems[2], err)
+					if retry {
+						c.SetString("fatal/error", err.Error())
+						c.serve500()
+						return
+					}
+					c.status = 204
+					return
+				}
+				c.Write(healthOK)
+				return
+			default:
+				c.serve404()
+				return
+			}
 		}
+		pathArgs := []string{}
+		for _, elem := range elems[1:] {
+			if elem != "" {
+				pathArgs = append(pathArgs, elem)
+			}
+		}
+		c.pathArgs = pathArgs
 	}
-	c.SetPathArgs(pathArgs)
-	route, exists := d.Routes[elems[0]]
+	if routeName == "" {
+		c.serve404()
+		return
+	}
+	if spec, exists := d.Statics[routeName]; exists {
+		serveStatic(c, spec)
+		return
+	}
+	route, exists := d.Routes[routeName]
 	if !exists && d.Lookup != nil {
 		route, exists = d.Lookup(c)
 	}
@@ -205,10 +286,6 @@ func (d *Dispatcher) Dispatch(w http.ResponseWriter, r *http.Request) {
 	route.Handler(c)
 }
 
-func (d *Dispatcher) StaticFile(expiration ...time.Duration) {
-
-}
-
 type mux []*Dispatcher
 
 func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -221,21 +298,23 @@ func (m mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var match *Dispatcher
-	found := false
 	for _, d := range m {
 		if strings.HasPrefix(path, d.Path) {
-			found = true
 			match = d
 		}
 	}
-	if found {
+	if match != nil {
 		patchRemoteAddr(r)
-		match.Dispatch(w, r)
+		match.dispatch(w, r)
 		return
 	}
-	c := newContext(r, 0)
+	c := newContext(r)
 	c.serve404()
 	writeResponse(c, w)
+}
+
+func OnShutdown(h Handler) {
+	shutdown = append(shutdown, h)
 }
 
 func OnStartup(h Handler) {
@@ -243,7 +322,19 @@ func OnStartup(h Handler) {
 }
 
 func Register(d *Dispatcher) {
+	cloudClients.Do(initCloudClients)
 	serveMux = append(serveMux, d)
+	for worker, spec := range d.Workers {
+		if topic, exists := workerTopics[worker]; exists {
+			panic(fmt.Errorf("web: worker %q already registered for %q", worker, topic.Name()))
+		}
+		topic, exists := queueTopics[spec.Queue.Name]
+		if !exists {
+			topic = config.PubsubClient.Topic("queue." + spec.Queue.Name)
+			queueTopics[spec.Queue.Name] = topic
+		}
+		workerTopics[worker] = topic
+	}
 }
 
 func Run() {
@@ -261,7 +352,6 @@ func Run() {
 		fmt.Printf(">> Starting instance on port %s\n", ServerPort)
 	}
 	c := BackgroundContext()
-	initCloud(c)
 	if len(startup) > 0 {
 		for _, handler := range startup {
 			go handler(c)

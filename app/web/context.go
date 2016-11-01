@@ -27,6 +27,8 @@ import (
 	"github.com/tav/gitfund/app/token"
 	"github.com/tav/golly/log"
 	"google.golang.org/cloud/datastore"
+	"google.golang.org/cloud/pubsub"
+	"google.golang.org/cloud/storage"
 )
 
 // Ensure that our Context implements the interface defined by the context
@@ -81,6 +83,48 @@ func (c *Context) AllocateIDs(keys []*model.Key) ([]*model.Key, error) {
 	}
 	ctx.Cancel()
 	return akeys, nil
+}
+
+func (c *Context) BlobDelete(path string) error {
+	ctx := c.WithTimeout(config.BlobTimeout)
+	err := blobBucket.Object(path).Delete(ctx)
+	ctx.Cancel()
+	return err
+}
+
+func (c *Context) BlobObject(path string) *storage.ObjectHandle {
+	return blobBucket.Object(path)
+}
+
+func (c *Context) BlobRead(path string) ([]byte, error) {
+	ctx := c.WithTimeout(config.BlobTimeout)
+	r, err := blobBucket.Object(path).NewReader(ctx)
+	if err != nil {
+		ctx.Cancel()
+		return nil, err
+	}
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		ctx.Cancel()
+		return nil, err
+	}
+	err = r.Close()
+	ctx.Cancel()
+	return content, err
+}
+
+func (c *Context) BlobWrite(path string, content []byte) error {
+	ctx := c.WithTimeout(config.BlobTimeout)
+	w := blobBucket.Object(path).NewWriter(ctx)
+	w.ObjectAttrs.ACL = []storage.ACLRule{{storage.AllAuthenticatedUsers, storage.RoleOwner}}
+	_, err := w.Write(content)
+	if err != nil {
+		ctx.Cancel()
+		return err
+	}
+	err = w.Close()
+	ctx.Cancel()
+	return err
 }
 
 func (c *Context) BoolField(name string) bool {
@@ -160,7 +204,9 @@ func (c *Context) cancel(removeFromParent bool, err error) {
 		return // already canceled
 	}
 	c.err = err
-	close(c.done)
+	if c.done != nil {
+		close(c.done)
+	}
 	for child := range c.children {
 		child.cancel(false, err)
 	}
@@ -593,6 +639,21 @@ func (c *Context) Query(kind string) *model.Query {
 	return model.NewQuery(c, datastore.NewQuery(kind), config.QueryTimeout)
 }
 
+func (c *Context) Queue(worker string, args ...interface{}) error {
+	topic, exists := workerTopics[worker]
+	if !exists {
+		return fmt.Errorf("web: cannot find worker %q in the dispatcher config", worker)
+	}
+	data, err := json.Marshal(&queueData{worker, args})
+	if err != nil {
+		return err
+	}
+	ctx := c.WithTimeout(config.PublishTimeout)
+	_, err = topic.Publish(ctx, &pubsub.Message{Data: data})
+	ctx.Cancel()
+	return err
+}
+
 func (c *Context) RaiseNotFound() {
 	panic(raise404{})
 }
@@ -638,6 +699,27 @@ func (c *Context) Request() *http.Request {
 		return c.parent.Request()
 	}
 	return c.request
+}
+
+func (c *Context) ResponseCacheNever() {
+	c.SetResponseHeader("Cache-Control", "no-store, must-revalidate")
+	c.SetResponseHeader("Expires", "Fri, 31 December 1999 23:59:59 GMT")
+	c.SetResponseHeader("Pragma", "no-cache")
+}
+
+func (c *Context) ResponseCachePrivate(etag string, duration time.Duration) bool {
+	etag = fmt.Sprintf("%q", etag)
+	c.SetResponseHeader("Etag", etag)
+	c.SetResponseHeader("Cache-Control", fmt.Sprintf("private, max-age=%d;", duration/time.Second))
+	return c.Request().Header.Get("If-None-Match") == etag
+}
+
+func (c *Context) ResponseCachePublic(etag string, duration time.Duration) bool {
+	etag = fmt.Sprintf("%q", etag)
+	c.SetResponseHeader("Etag", etag)
+	c.SetResponseHeader("Cache-Control", fmt.Sprintf("public, max-age=%d;", duration/time.Second))
+	c.SetResponseHeader("Pragma", "Public")
+	return c.Request().Header.Get("If-None-Match") == etag
 }
 
 func (c *Context) SecureToken(name string, value string) string {
@@ -830,6 +912,16 @@ func (c *Context) Value(key interface{}) interface{} {
 	return nil
 }
 
+func (c *Context) withTimeout(timeout time.Duration) {
+	if timeout > 0 {
+		c.deadline = time.Now().Add(timeout)
+		c.done = make(chan struct{})
+		c.timer = time.AfterFunc(timeout, func() {
+			c.cancel(false, context.DeadlineExceeded)
+		})
+	}
+}
+
 func (c *Context) WithTimeout(timeout time.Duration) *Context {
 	deadline := time.Now().Add(timeout)
 	if !c.deadline.IsZero() && c.deadline.Before(deadline) {
@@ -900,25 +992,17 @@ func (c *Context) XSRF() string {
 	return c.xsrf
 }
 
-func newContext(r *http.Request, timeout time.Duration) *Context {
-	c := &Context{
+func newContext(r *http.Request) *Context {
+	return &Context{
 		buffer:  &bytes.Buffer{},
 		request: r,
 		status:  200,
 	}
-	if timeout > 0 {
-		c.deadline = time.Now().Add(timeout)
-		c.done = make(chan struct{})
-		c.timer = time.AfterFunc(timeout, func() {
-			c.cancel(false, context.DeadlineExceeded)
-		})
-	}
-	return c
 }
 
 func BackgroundContext() *Context {
 	req := &http.Request{
 		Host: ServerHost,
 	}
-	return newContext(req, 0)
+	return newContext(req)
 }
