@@ -6,7 +6,7 @@ BROWSER_FILES := $(shell find browser -type f -print)
 GENERATED := app/asset/generated.go app/model/generated.go app/template/generated.go
 HDR = `date +'[%H:%M:%S]'` ">>"
 
-.PHONY: all buildapp clean datastore deployapp describe gopkgs indexes memcached pubsub runapp vacuum watch watchloop wipedata
+.PHONY: all buildapp clean datastore deployapp describe gopkgs indexes memcached pubsub runapp syncstatic vacuum watch watchloop wipedata
 
 describe:
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[31m%-10s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -91,6 +91,10 @@ environ/run: cmd/run/run.go
 	@echo $(HDR) "Building run"
 	@go build -a -o environ/run github.com/tav/gitfund/cmd/run
 
+environ/syncstatic: cmd/syncstatic/syncstatic.go
+	@echo $(HDR) "Building syncstatic"
+	@go build -o environ/syncstatic github.com/tav/gitfund/cmd/syncstatic
+
 gopkgs: app/.gopkgs.json ## Generate .gopkg.json manifest files
 	@true
 
@@ -106,6 +110,9 @@ pubsub: ## Run the local pubsub emulator
 
 runapp: environ/run $(GENERATED) ## Run the app service
 	@./environ/run app -w private
+
+syncstatic: environ/syncstatic
+	@./environ/syncstatic static gitfund static
 
 vacuum: ## Remove unused datastore indexes
 	@gcloud preview datastore cleanup-indexes index.yaml
