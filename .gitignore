@@ -17,6 +17,10 @@
 /environ/genmodel
 /environ/gopkgs
 /environ/run
+/environ/syncstatic
+/mvp/app/assets.json
+/mvp/app/static/assets/
+/private/
 
 # hidden files/directories
 
