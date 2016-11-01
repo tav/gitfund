@@ -1,1 +1,0 @@
-../config/python/config.py
