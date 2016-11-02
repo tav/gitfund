@@ -23,9 +23,9 @@ generate:
         - browser/gfx/*
 
 css.embed.only: true
-output.directory: app/static/assets
+output.directory: static/_assets
 output.hashed: true
-output.manifest: app/assets.json
+output.manifest: environ/assets.json
 
 profile.dev:
   css.compress: false
