@@ -607,14 +607,12 @@ var _ = time.Time{}
 	// Write the files to disk.
 	err := ioutil.WriteFile(os.Args[1], fbuf.Bytes(), 0644)
 	if err != nil {
-		fmt.Printf("ERROR: %s", err)
-		os.Exit(1)
+		exit("%s", err)
 	}
 
 	err = ioutil.WriteFile(os.Args[2], sbuf.Bytes(), 0644)
 	if err != nil {
-		fmt.Printf("ERROR: %s", err)
-		os.Exit(1)
+		exit("%s", err)
 	}
 
 }
