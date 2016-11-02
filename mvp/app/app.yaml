@@ -1,3 +1,6 @@
+# Public Domain (-) 2015-2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
 application: gitfund
 version: 1
 runtime: python27
@@ -26,12 +29,12 @@ handlers:
   upload: static/robots.txt
   expiration: 6h
 
-- url: /static
-  static_dir: static/assets
+- url: /static/emoji
+  static_dir: static/emoji
   expiration: 6h
 
-- url: /.emoji
-  static_dir: static/emoji
+- url: /static
+  static_dir: static/assets
   expiration: 6h
 
 - url: .*
