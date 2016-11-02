@@ -10,7 +10,6 @@ import (
 
 	"github.com/bradfitz/gomemcache/memcache"
 
-	"golang.org/x/oauth2/jwt"
 	"google.golang.org/cloud/datastore"
 	"google.golang.org/cloud/logging"
 	"google.golang.org/cloud/pubsub"
@@ -23,13 +22,7 @@ const (
 )
 
 var (
-	GCS = &jwt.Config{
-		Email:      GCloudEmail,
-		PrivateKey: []byte(GCloudPrivateKey),
-		Scopes:     []string{storage.ScopeReadWrite},
-		TokenURL:   "https://accounts.google.com/o/oauth2/token",
-	}
-	TokenSpec = TokenKeys[DefaultTokenKey]
+	TokenSpec = TokenKeys[DefaultTokenKeyID]
 )
 
 var (
@@ -39,6 +32,12 @@ var (
 	LogClient    *logging.Client
 	PubsubClient *pubsub.Client
 )
+
+type Queue struct {
+	Name    string
+	Timeout time.Duration
+	Key     []byte
+}
 
 func init() {
 	for keyID, spec := range TokenKeys {
