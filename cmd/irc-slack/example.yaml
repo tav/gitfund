@@ -1,0 +1,25 @@
+# Public Domain (-) 2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+irc:
+
+  # Comment out this `auth` section if you aren't using NickServ to identify the
+  # bot on IRC.
+  auth:
+    type: "nickserv"
+    password: "nickserv-password-here"
+
+  channel: "#your-irc-channel-name-here"
+  nick: "ircbot-nick-here"
+  quitmsg: "Custom quit message here!"
+
+  # The bot only supports TLS connections, so use the appropriate port for your
+  # IRC network.
+  server: "chat.freenode.net"
+  port: 7000
+
+slack:
+
+  api: "slack api token here"
+  channel: "your-slack-channel-name-here"
+  nick: "slackbot-nick-here"
