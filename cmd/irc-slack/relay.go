@@ -25,29 +25,23 @@ var (
 )
 
 type Config struct {
-	IRC   IRCConfig
-	Slack SlackConfig
-}
-
-type IRCAuth struct {
-	Type     string
-	Password string
-}
-
-type IRCConfig struct {
-	Auth    IRCAuth
-	Channel string
-	Nick    string
-	Port    int
-	Privacy bool
-	QuitMsg string
-	Server  string
-}
-
-type SlackConfig struct {
-	API     string
-	Channel string
-	Nick    string
+	IRC struct {
+		Auth struct {
+			Type     string
+			Password string
+		}
+		Channel string
+		Nick    string
+		Port    int
+		Privacy bool
+		QuitMsg string
+		Server  string
+		TLS     bool
+	}
+	Slack struct {
+		API     string `yaml:"api_token"`
+		Channel string
+	}
 }
 
 func exit(err error) {
@@ -62,9 +56,12 @@ func ircBot() {
 
 	// Configure the connection.
 	conn := irc.IRC(config.IRC.Nick, config.IRC.Nick)
-	conn.TLSConfig = &tls.Config{ServerName: config.IRC.Server}
-	conn.UseTLS = true
 	conn.QuitMessage = config.IRC.QuitMsg
+
+	if config.IRC.TLS {
+		conn.TLSConfig = &tls.Config{ServerName: config.IRC.Server}
+		conn.UseTLS = true
+	}
 
 	// Add callback to identify with auth providers and join the channel as soon
 	// as a connection is established.
@@ -226,4 +223,5 @@ func main() {
 	go slackBot()
 
 	<-make(chan struct{})
+
 }

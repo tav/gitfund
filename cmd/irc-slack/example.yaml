@@ -13,13 +13,15 @@ irc:
   nick: "ircbot-nick-here"
   quitmsg: "Custom quit message here!"
 
-  # The bot only supports TLS connections, so use the appropriate port for your
-  # IRC network.
   server: "chat.freenode.net"
   port: 7000
+  tls: true
 
 slack:
 
-  api: "slack api token here"
+  # Generate an API token by creating a new bot using:
+  #
+  #   https://my.slack.com/services/new/bot
+  #
+  api_token: "slack api token here"
   channel: "your-slack-channel-name-here"
-  nick: "slackbot-nick-here"
