@@ -25,3 +25,5 @@ slack:
   #
   api_token: "slack api token here"
   channel: "your-slack-channel-name-here"
+  ignore:
+  - "some-noisy-bot"
