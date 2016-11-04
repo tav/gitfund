@@ -41,6 +41,7 @@ type Config struct {
 	Slack struct {
 		API     string `yaml:"api_token"`
 		Channel string
+		Ignore  []string
 	}
 }
 
@@ -135,6 +136,11 @@ func slackBot() {
 		}
 	}()
 
+	ignore := map[string]bool{}
+	for _, user := range config.Slack.Ignore {
+		ignore[strings.ToLower(user)] = true
+	}
+
 	self, err := client.AuthTest()
 	if err != nil {
 		exit(err)
@@ -178,6 +184,9 @@ func slackBot() {
 				}
 				user = info.Name
 				users[e.User] = info.Name
+			}
+			if ignore[strings.ToLower(user)] {
+				break
 			}
 			if e.SubType == "" {
 				slackMsgs <- fmt.Sprintf("<%s> %s", user, e.Text)
