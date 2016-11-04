@@ -127,6 +127,115 @@ func slackBot() {
 	channelID := ""
 	users := map[string]string{}
 
+	getUser := func(userID string) (string, error) {
+		user, exists := users[userID]
+		if !exists {
+			info, err := client.GetUserInfo(userID)
+			if err != nil {
+				return "", err
+			}
+			user = info.Name
+			users[userID] = user
+		}
+		return user, nil
+	}
+
+	replacer := strings.NewReplacer(
+		"\r\n", " ",
+		"\r", " ",
+		"\n", " ",
+		"&gt;", ">",
+		"&lt;", "<",
+		"&amp;", "&",
+	)
+
+	getPlaintext := func(text string) string {
+		line := []byte{}
+		inRef := false
+		ref := []byte{}
+		appendRef := false
+		errShown := false
+		printErr := func(msg string) {
+			if errShown {
+				return
+			}
+			fmt.Printf("WARNING: %s in Slack message: %q\n", msg, text)
+			errShown = true
+		}
+		for i := 0; i < len(text); i++ {
+			char := text[i]
+			if char == '<' {
+				if inRef {
+					printErr("Unexpected < character")
+				}
+				inRef = true
+				ref = []byte{}
+				appendRef = true
+			} else if char == '>' {
+				if inRef {
+					inRef = false
+					if len(ref) > 2 {
+						switch ref[0] {
+						case '@':
+							userID := string(ref[1:])
+							user, err := getUser(userID)
+							if err == nil {
+								line = append(line, '@')
+								line = append(line, user...)
+							} else {
+								printErr("Couldn't find user for userID " + userID)
+								line = append(line, "@???"...)
+							}
+						case '#':
+							channelID := string(ref[1:])
+							info, err := client.GetChannelInfo(channelID)
+							if err == nil {
+								line = append(line, '#')
+								line = append(line, info.Name...)
+							} else {
+								printErr("Couldn't find channel for channelID " + channelID)
+								line = append(line, "#???"...)
+							}
+						case '!':
+							str := string(ref)
+							if str == "!channel" {
+								line = append(line, "@channel"...)
+							} else if str == "!group" {
+								line = append(line, "@group"...)
+							} else if str == "!here" {
+								line = append(line, "@here"...)
+							} else if str == "!everyone" {
+								line = append(line, "@everyone"...)
+							} else {
+								line = append(line, ref...)
+							}
+						default:
+							// Link refs like http, mailto, etc.
+							line = append(line, ref...)
+						}
+					} else {
+						printErr("Unexpected short reference")
+					}
+				} else {
+					printErr("Unexpected > character")
+				}
+			} else if inRef {
+				if char == '|' || char == '^' {
+					appendRef = false
+				}
+				if appendRef {
+					ref = append(ref, char)
+				}
+			} else {
+				line = append(line, char)
+			}
+		}
+		if inRef {
+			printErr("Unterminated <reference>")
+		}
+		return replacer.Replace(string(line))
+	}
+
 	go func() {
 		params := slack.PostMessageParameters{
 			AsUser: true,
@@ -175,23 +284,19 @@ func slackBot() {
 			if e.Channel != channelID {
 				break
 			}
-			user, exists := users[e.User]
-			if !exists {
-				info, err := client.GetUserInfo(e.User)
-				if err != nil {
-					fmt.Printf("ERROR: Unable to get user info for %s: %s", e.User, err)
-					break
-				}
-				user = info.Name
-				users[e.User] = info.Name
+			user, err := getUser(e.User)
+			if err != nil {
+				fmt.Printf("ERROR: Unable to get user info for %s: %s", e.User, err)
+				break
 			}
 			if ignore[strings.ToLower(user)] {
 				break
 			}
+			text := getPlaintext(e.Text)
 			if e.SubType == "" {
-				slackMsgs <- fmt.Sprintf("<%s> %s", user, e.Text)
+				slackMsgs <- fmt.Sprintf("<%s> %s", user, text)
 			} else if e.SubType == "me_message" {
-				slackMsgs <- fmt.Sprintf("* %s %s", user, e.Text)
+				slackMsgs <- fmt.Sprintf("* %s %s", user, text)
 			}
 		case *slack.InvalidAuthEvent:
 			exit(errors.New("slack: invalid auth credentials"))
