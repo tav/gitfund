@@ -1,0 +1,34 @@
+# Public Domain (-) 2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+slack:
+  # Generate an API token by creating a new bot using:
+  #
+  #   https://my.slack.com/services/new/bot
+  #
+  api_token: "slack api token here"
+
+github:
+  # Generate an access token here:
+  #
+  #   https://github.com/settings/tokens/new
+  #
+  # No scope is needed for dealing with only public repos, but the `repo` status
+  # is needed if any private repos are involved.
+  access_token: "github personal access token here"
+  # For most open source projects, the API url base will be this api.github.com
+  # one, but a custom url can be specified for GitHub Enterprise installs.
+  api_url_base: https://api.github.com/
+
+# Channels is a mapping of channel name to a list of repo paths, e.g.
+#
+# channels:
+#   lobby:
+#   - "tav/gitfund"
+#   - "antirez/redis"
+#   ops:
+#   - "docker/docker"
+#
+channels:
+  example:
+  - "owner/repo"
