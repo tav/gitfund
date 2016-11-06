@@ -1,0 +1,16 @@
+# Public Domain (-) 2016 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+cron:
+
+- description: Sync GitHub Profile Info
+  url: /cron.github
+  schedule: every 12 minutes
+
+- description: Sync Sponsor Info
+  url: /cron.sync
+  schedule: every 12 minutes
+
+- description: Sync Twitter Profile Info
+  url: /cron.twitter
+  schedule: every 12 minutes
