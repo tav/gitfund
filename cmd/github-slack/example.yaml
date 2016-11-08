@@ -32,3 +32,11 @@ github:
 channels:
   example:
   - "owner/repo"
+
+# Configure the aggregation of updates into single Slack messages (through the
+# edit feature). A new Slack message will be posted if anyone else posts to the
+# channel in between updates, or if `max_lines` updates have been made, or if
+# `max_duration` has elapsed since the post was first made.
+updates:
+  max_duration: "1h"
+  max_lines: 5

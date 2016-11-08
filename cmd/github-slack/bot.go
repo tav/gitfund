@@ -19,11 +19,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	maxUpdates  = 5
-	maxDuration = time.Hour
-)
-
 var (
 	config   = &Config{}
 	ghClient = &github.Client{}
@@ -38,6 +33,10 @@ type Config struct {
 	}
 	Slack struct {
 		API string `yaml:"api_token"`
+	}
+	Updates struct {
+		MaxDuration time.Duration `yaml:"max_duration"`
+		MaxLines    int           `yaml:"max_lines"`
 	}
 }
 
@@ -144,7 +143,7 @@ func slackBot() {
 		select {
 		case post := <-posts:
 			status := statusMap[post.Channel]
-			if status.UpdatePrev && time.Now().UTC().Sub(status.UpdateTime) < maxDuration {
+			if status.UpdatePrev && time.Now().UTC().Sub(status.UpdateTime) < config.Updates.MaxDuration {
 				status.Message += "\n" + post.Message
 				_, _, _, err = client.UpdateMessage(post.Channel, status.ID, status.Message)
 				if err != nil {
@@ -163,7 +162,7 @@ func slackBot() {
 				status.UpdateCount = 1
 				status.UpdateTime = time.Now().UTC()
 			}
-			if status.UpdateCount == maxUpdates {
+			if status.UpdateCount >= config.Updates.MaxLines {
 				status.UpdateCount = 0
 				status.UpdatePrev = false
 			} else {
@@ -207,7 +206,7 @@ func watchRepo(channel string, path string) {
 	for {
 		commits, _, err := ghClient.Repositories.ListCommits(owner, repo, opts)
 		if err != nil {
-			fmt.Printf("ERROR: Couldn't fetch commits from %q: %s", path, err)
+			fmt.Printf("ERROR: Couldn't fetch commits from %q: %s\n", path, err)
 			time.Sleep(30 * time.Second)
 			continue
 		}
