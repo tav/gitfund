@@ -56,25 +56,26 @@ meetups, etc.
 
 These are the policies for upholding our community's standards of conduct:
 
-* Remarks that violate our standards of conduct are not allowed.
+* Behaviour that violates our standards of conduct is not allowed.
 
-* Remarks that moderators find inappropriate, whether listed in the code of
-conduct or not, are also not allowed.
+* Behaviour that moderators find inappropriate, whether listed in the code of
+conduct or not, is also not allowed.
 
 * Moderators will first respond to such remarks with a warning.
 
-* If the warning is unheeded, the person will be "kicked", i.e. kicked out of
-the communication channel to cool off.
+* If the warning is unheeded, the person will be temporarily excluded from
+interaction, e.g. by being asked to leave the venue at meetups, by being kicked
+from IRC channels, etc.
 
 * If the person comes back and continues to make trouble, they will be banned,
 i.e. indefinitely excluded.
 
 * Moderators may choose at their discretion to un-ban the person if it was a
-first offense and they offer the offended party a genuine apology.
+first offense and they offer a genuine apology.
 
-* If a moderator bans someone and you think it was unjustified, please take it up
-with that moderator, or with a different moderator, in private. Complaints about
-bans in-channel are not allowed.
+* If a moderator bans someone and you think it was unjustified, please take it
+up with that moderator, or with a different moderator, in private. Public
+complaints about bans are not allowed.
 
 The enforcement policies listed above apply to all public interaction spaces
 where our community is present, e.g. the various IRC/Slack channels, GitHub
