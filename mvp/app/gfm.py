@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # These GitHub-Flavoured Markdown extensions are adapted from:
 # https://github.com/google/py-gfm/tree/master/gfm
 
