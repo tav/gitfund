@@ -1,8 +1,6 @@
-# Public Domain (-) 2015-2016 The GitFund Authors.
+# Public Domain (-) 2015-2017 The GitFund Authors.
 # See the GitFund UNLICENSE file for details.
 
-application: gitfund
-version: 1
 runtime: python27
 api_version: 1
 threadsafe: true
