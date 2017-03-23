@@ -103,4 +103,4 @@ the [#node.js Policy on Trolling].
 [Python Diversity Statement]: https://www.python.org/community/diversity/
 [Rust Code of Conduct]: https://www.rust-lang.org/en-US/conduct.html
 [#node.js Policy on Trolling]: http://blog.izs.me/post/30036893703/policy-on-trolling
-[Terms of Service]: /view/terms
+[Terms of Service]: /site/terms
