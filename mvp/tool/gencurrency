@@ -1,10 +1,10 @@
 #! /usr/bin/env python3
 
-# Public Domain (-) 2016 The GitFund Authors.
+# Public Domain (-) 2016-2017 The GitFund Authors.
 # See the GitFund UNLICENSE file for details.
 
 """
-Script to generate finance.py from the various metadata.
+Script to generate currency.py from the various metadata.
 
 The countryInfo.txt file can be downloaded from:
 
@@ -12,16 +12,13 @@ The countryInfo.txt file can be downloaded from:
 
 """
 
-import os
 import sys
 
-from datetime import date
-from decimal import Decimal
-from inspect import getsourcelines
+from os import listdir
 from os.path import dirname, join, realpath
 
 if len(sys.argv[1:]) != 2:
-    print("Usage: genfinance path/to/babel/directory path/to/countryInfo.txt")
+    print("Usage: gencurrency path/to/babel/directory path/to/countryInfo.txt")
     sys.exit(1)
 
 BABEL_DIRECTORY = realpath(sys.argv[1])
@@ -29,86 +26,39 @@ BABEL_DIRECTORY = realpath(sys.argv[1])
 sys.path.insert(0, dirname(BABEL_DIRECTORY))
 sys.path.append(join(dirname(dirname(realpath(__file__))), 'app'))
 
-from babel.core import Locale
+from babel.core import get_global, Locale
 from babel.numbers import get_territory_currencies
+from finance import BASE_PRICES, ZERO_DECIMAL_CURRENCIES
 from territories import TERRITORY_CODES
 
 DEBUG = False
 
-BASE_PRICES = {
-    'AUD': 170,
-    'BRL': 500,
-    'CAD': 170,
-    'CHF': 130,
-    'CNY': 900,
-    'COP': 400000,
-    'CZK': 3200,
-    'DKK': 880,
-    'EUR': 120,
-    'GBP': 100,
-    'HKD': 1000,
-    'HUF': 37000,
-    'IDR': 1700000,
-    'ILS': 500,
-    'INR': 8600,
-    'IRR': 4100000,
-    'JPY': 15000,
-    'KRW': 150000,
-    'MXN': 2700,
-    'MYR': 560,
-    'NOK': 1100,
-    'NZD': 180,
-    'PHP': 6300,
-    'PKR': 13100,
-    'PLN': 530,
-    'RON': 540,
-    'RUB': 10000,
-    'SEK': 1200,
-    'SGD': 200,
-    'THB': 4500,
-    'TRY': 430,
-    'TWD': 5000,
-    'USD': 125,
-    'VND': 2800000,
-    'ZAR': 1900,
-}
-
-PLAN_FACTORS = [('bronze', 1), ('silver', 6), ('gold', 60), ('platinum', 200)]
-
-# TODO(tav): Figure out what to do about currencies which are pegged to one of
-# our accepted ones, e.g. the Brunei Dollar is 1:1 to the Singapore Dollar, and
-# they are both managed by the Monetary Authority of Singapore.
-#
-# PEGGED = {
-#     'BAM': 'EUR',
-#     'BND': 'SGD',
-#     'BSD': 'USD',
-#     'BTN': 'INR',
-#     'FKP': 'GBP',
-#     'GIP': 'GBP',
-#     'LSL': 'ZAR',
-#     'NAD': 'ZAR',
-#     'SHP': 'GBP',
-# }
-
 ALT_CODES = {
+    'AT-JU': 'DE',
+    'AT-MI': 'AT',
+    'DE-BU': 'CH',
+    'DE-HL': 'DE',
+    'ES-CE': 'EA',
+    'ES-CN': 'IC',
+    'ES-ML': 'EA',
+    'IT-CP': 'CH',
+    'IT-LV': 'IT',
+    'PT-20': 'PT',
+    'PT-30': 'PT',
+    'SH-AC': 'AC',
     'SH-HL': 'SH',
     'SH-TA': 'TA',
-    'SH-AC': 'AC',
-    'ES-ML': 'EA',
-    'ES-CN': 'IC',
-    'ES-CE': 'EA'
 }
 
 PREFERRED_CURRENCIES = {
-    'BT': ['INR'], # Bhutan
-    'BY': ['USD'], # Belarus
-    'CU': ['USD'], # Cuba
-    'HT': ['USD'], # Haiti
-    'LS': ['LSL'], # Lesotho
-    'NA': ['NAD'], # Namibia
-    'PS': ['ILS'], # Palestine
-    'PA': ['USD'], # Panama
+    'BT': 'INR', # Bhutan
+    'BY': 'USD', # Belarus
+    'CU': 'USD', # Cuba
+    'HT': 'USD', # Haiti
+    'LS': 'LSL', # Lesotho
+    'NA': 'NAD', # Namibia
+    'PS': 'ILS', # Palestine
+    'PA': 'USD', # Panama
 }
 
 # Seem to be missing CLDR data in Babel for these locales:
@@ -144,82 +94,67 @@ PRIMARY_LOCALES = {
     'VU': ('en', 'VU'),
 }
 
-# TODO(tav): Check whether making the currency formatting consistent is
-# confusing for locals in different locales.
-#
-# Currently using https://www.similarweb.com/top-websites/<country-name> e.g.
+# Currently using resources like https://www.similarweb.com/top-websites, e.g.
 # https://www.similarweb.com/top-websites/poland to find the top e-commerce
-# sites in territories and determine "common" usage.
-CURRENCY_FORMATS = {
-    'AUD': ('AU$', '¤ ', ''),
-    'CAD': ('CA$', '¤ ', ''),
-    'CNY': ('￥', '¤ ', ''),
-    'COL': ('COL$', '¤ ', ''),
-    'DKK': ('kr.', '', ' ¤'),
-    'EUR': ('€', '', ' ¤'),
-    'GBP': ('£', '¤', ''),
-    'HKD': ('HK$', '¤ ', ''),
-    'IDR': ('Rp', '¤ ', ''),
-    'ILS': ('₪', '¤ ', ''),
-    'INR': ('₹', '¤', ''),
-    'IRR': ('﷼', '¤ ', ''),
-    'JPY': ('￥', '¤ ', ''),
-    'MXN': ('MX$', '¤ ', ''),
-    'MYR': ('RM', '¤ ', ''),
-    'NOK': ('', '¤ ', ',-'),
-    'PHP': ('₱', '¤ ', ''),
-    'RON': ('Lei', '', ' ¤'),
-    'RUB': ('руб.', '', ' ¤'),
-    'SGD': ('SG$', '¤ ', ''),
-    'THB': ('บาท', '', ' ¤'),
-    'TRY': ('TL', '', ' ¤'),
-    'TWD': ('NT$', '¤ ', ''),
-    'NZD': ('NZ$', '¤ ', ''),
-    'USD': ('US$', '¤ ', ''),
-    'VND': ('₫', '', ' ¤'),
-    'ZAR': ('R', '¤ ', ''),
+# sites in territories so as to determine "common" usage.
+TERRITORY_FORMATS = {
+    'BD': ('¤\xa0', ''),
+    'BT': ('¤\xa0', ''),
+    'EG': ('', '\xa0¤'),
+    'GL': ('', '\xa0¤'),
+    'IL': ('¤\xa0', ''),
+    'KR': ('', '¤'),
+    'MA': ('', '\xa0¤'),
+    'NO': ('', '\xa0¤'),
+    'PE': ('¤\xa0', ''),
+    'SH-TA': ('¤\xa0', ''),
+    'TH': ('', '\xa0¤'),
+    'TR': ('', '\xa0¤'),
 }
 
-# EU VAT rates are informed by:
-# http://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/vat/how_vat_works/rates/vat_rates_en.pdf
-TAX_RATES = {
-    'GB': [],
-    'IM': 'GB',
-}
+TERRITORY_FORMATS['EH'] = TERRITORY_FORMATS['MA']
+TERRITORY_FORMATS['PS'] = TERRITORY_FORMATS['IL']
+TERRITORY_FORMATS['SJ'] = TERRITORY_FORMATS['NO']
 
-class TaxRate(object):
-    def __init__(self, rate_str, tax_id_prefix, start_date=date(2000, 1, 1), type='vat/eu'):
-        self.rate = Decimal(rate_str)
-        self.rate_str = rate_str
-        self.start_date = start_date
-        self.tax_id_prefix = tax_id_prefix
-        self.type = type
+CURRENCY_SYMBOLS = {
+    'ARS': 'AR$',
+    'AUD': 'AU$',
+    'AED': 'AED',
+    'BDT': 'Tk.',
+    'BND': 'BN$',
+    'BSD': 'BS$',
+    'CAD': 'CA$',
+    'COP': 'CO$',
+    'DKK': 'kr.',
+    'EGP': 'ج.م.',
+    'HRK': 'kn',
+    'KRW': '원',
+    'LSL': 'M',
+    'MAD': 'Dhs',
+    'MXN': 'MX$',
+    'NAD': 'NA$',
+    'NOK': 'kr',   # ',-' for round amounts
+    'NZD': 'NZ$',
+    'PEN': 'S/.',
+    'RON': 'Lei',
+    'RUB': 'руб.',
+    'SAR': 'SR',
+    'SEK': 'kr',   # ':-' for round amounts
+    'SGD': 'SG$',
+    'THB': 'บาท',
+    'TRY': 'TL',
+    'TWD': 'NT$',
+    'UAH': 'грн',
+    'USD': 'US$',
+}
 
 def exit(msg):
     print("ERROR: %s" % msg)
     sys.exit(1)
 
-# This function is adapted from _format_int in the BSD-licensed Babel library:
-# https://github.com/python-babel/babel/blob/master/LICENSE
-def format_int(amount, grouping, group_symbol):
-    gsize = grouping[0]
-    ret = ''
-    while len(amount) > gsize:
-        ret = group_symbol + amount[-gsize:] + ret
-        amount = amount[:-gsize]
-        gsize = grouping[1]
-    return amount + ret
-
-COUNTRY_PRICES = {}
-COUNTRY_PRICE_FORMATS = {}
-PRICES = []
-
-PRICES = []
-
 LANGUAGES = {}
 LOCALE_DIR = join(BABEL_DIRECTORY, 'locale-data')
-LOCALES = [file[:-4] for file in os.listdir(LOCALE_DIR) if file.endswith('.dat')]
-LOCALES_SET = set(LOCALES)
+LOCALES = [file[:-4] for file in listdir(LOCALE_DIR) if file.endswith('.dat')]
 TERRITORY2LOCALES = {}
 
 for locale in LOCALES:
@@ -253,7 +188,10 @@ with open(sys.argv[2], 'r') as info_file:
                         exit("Unexpected locale qualifier for lang %r in territory %r" % (lang, code))
         LANGUAGES[code] = langs_split
 
-for territory in sorted(list(TERRITORY_CODES)):
+TERRITORY2CURRENCY = {}
+SEEN_SYMBOLS = {}
+
+for territory in sorted(TERRITORY_CODES):
 
     code = ALT_CODES.get(territory, territory)
     currencies = get_territory_currencies(code)
@@ -269,15 +207,15 @@ for territory in sorted(list(TERRITORY_CODES)):
     if len(currencies) != 1:
         if code not in PREFERRED_CURRENCIES:
             exit("Missing preferred currency for: %s" % code)
-        currencies = PREFERRED_CURRENCIES[code]
+        currency = PREFERRED_CURRENCIES[code]
+    else:
+        currency = currencies[0]
 
-    currency = currencies[0]
-    use_USD = False
+    # Use USD as the default when the currency is not in our supported list.
     if currency not in BASE_PRICES:
         if DEBUG == 2:
             print("%s https://en.wikipedia.org/wiki/ISO_3166-2:%s" % (currency, code))
         currency = 'USD'
-        use_USD = True
 
     if code not in TERRITORY2LOCALES:
         if code in OVERRIDE_LOCALES:
@@ -315,6 +253,7 @@ for territory in sorted(list(TERRITORY_CODES)):
     locale = Locale(lang, locale_code)
     locale_str = '%s_%s' % (lang, locale_code)
     fmt = locale.currency_formats['standard']
+    dec_symbol = locale.number_symbols.get('decimal', '.')
 
     if fmt.exp_prec:
         exit("Unexpected exp_prec for: %s" % locale_str)
@@ -344,29 +283,121 @@ for territory in sorted(list(TERRITORY_CODES)):
     if group_symbol not in (",", ".", "'", '\xa0', '\u2019'):
         exit("Unexpected group symbol for: %s" % locale_str)
 
-    if (currency in CURRENCY_FORMATS) and code != 'US':
-        currency_symbol, prefix, suffix = CURRENCY_FORMATS[currency]
+    if currency in CURRENCY_SYMBOLS:
+        if territory == 'US':
+            currency_symbol = '$'
+        else:
+            currency_symbol = CURRENCY_SYMBOLS[currency]
     else:
         currency_symbol = locale.currency_symbols.get(currency, 'UNKNOWN')
         if currency_symbol == 'UNKNOWN':
-            if (territory, currency) not in (('CH', 'CHF'), ('IR', 'IRR')):
-                exit("Unexpected 'UNKNOWN' currency symbol for: %s" % locale_str)
+            exit("Unknown currency symbol for %r in locale %r" % (currency, locale_str))
 
-    if DEBUG:
-        price = BASE_PRICES[currency] * PLAN_FACTORS[-1][1]
-        price_fmt = prefix + format_int(str(price), grouping, group_symbol) + suffix
-        price_fmt = price_fmt.replace('¤', currency_symbol)
-        url = "https://en.wikipedia.org/wiki/ISO_3166-2:%s" % code
-        print("%s   %s   %20s %20s    %s" % (code, currency, locale_str, price_fmt, url))
+    if currency not in SEEN_SYMBOLS:
+        SEEN_SYMBOLS[currency] = {}
+    _seen = SEEN_SYMBOLS[currency]
+    if currency_symbol not in _seen:
+        _seen[currency_symbol] = []
+    _seen[currency_symbol].append(territory)
+
+    if territory in TERRITORY_FORMATS:
+        prefix, suffix = TERRITORY_FORMATS[territory]
+
+    # Normalise the prefix/suffix for non-US currencies denominated in dollars.
+    if currency_symbol.endswith('$') and currency != '$':
+        if prefix and prefix != '¤\xa0':
+            prefix = '¤\xa0'
+        elif suffix and suffix != '\xa0¤':
+            suffix = '\xa0¤'
+
+    prefix = prefix.replace('¤', currency_symbol)
+    suffix = suffix.replace('¤', currency_symbol)
+
+    TERRITORY2CURRENCY[territory] = (
+        currency, prefix, suffix, grouping, group_symbol, dec_symbol
+    )
+
+# Sanity check decimal places for currencies.
+currency_fractions = get_global('currency_fractions')
+default_prec = currency_fractions['DEFAULT']
+for currency in BASE_PRICES:
+    prec = currency_fractions.get(currency, default_prec)[0]
+    if prec == 2:
+        continue
+    if prec == 0:
+        if currency not in ZERO_DECIMAL_CURRENCIES:
+            exit("Currency %r expects zero decimal places, but is not in ZERO_DECIMAL_CURRENCIES" % currency)
+        continue
+    exit("Currency %r expects %d decimal places" % (currency, prec))
 
 if DEBUG:
+    for currency in sorted(SEEN_SYMBOLS):
+        print("%s: %s" % (currency, repr(SEEN_SYMBOLS[currency])))
     sys.exit(0)
 
-print("# encoding: utf-8\n")
-print("# DO NOT EDIT")
-print("# AUTOGENERATED BY GENFINANCE")
-print("\nfrom __future__ import unicode_literals\n")
-print("""
-def format_currency(amount):
-""")
-print(''.join(getsourcelines(format_int)[0][1:]))
+print("""# encoding: utf-8
+
+# DO NOT EDIT
+# AUTOGENERATED BY GENCURRENCY
+
+from __future__ import unicode_literals
+from collections import namedtuple
+
+Format = namedtuple(
+    'Format', [
+        'currency', 'prefix', 'suffix', 'grouping', 'group_symbol',
+        'dec_symbol'
+    ]
+)
+
+RTL_CURRENCIES = set([
+    'EGP',
+])
+
+TERRITORY2CURRENCY = {""")
+
+for territory in sorted(TERRITORY2CURRENCY):
+    fmt = TERRITORY2CURRENCY[territory]
+    print(" '%s': Format%s," % (territory, repr(fmt)))
+
+print("""}
+
+# This function is adapted from numbers.py in the BSD-licensed Babel library:
+# https://github.com/python-babel/babel/blob/master/LICENSE
+#
+# Expects amount to be a string. If with_decimals is set to True, then the
+# amount needs to have been quantized to the appropriate decimal places.
+# Otherwise, it needs to be an integral value.
+def format(self, amount, with_decimals=False, as_html=False):
+    if with_decimals:
+        amount, rem = amount.split('.')
+    gsize, ngsize = self.grouping
+    group_symbol = self.group_symbol
+    num = ''
+    while len(amount) > gsize:
+        num = group_symbol + amount[-gsize:] + num
+        amount = amount[:-gsize]
+        gsize = ngsize
+    if with_decimals:
+        num = self.prefix + amount + num + self.dec_symbol + rem + self.suffix
+    else:
+        num = self.prefix + amount + num + self.suffix
+    if as_html and self.currency in RTL_CURRENCIES:
+        return '<span dir="rtl">%s</span>' % num
+    return num
+
+Format.format = format
+
+if __name__ == '__main__':
+
+    import os.path as path
+    import sys
+
+    sys.path.append(path.realpath(path.dirname(__file__)))
+
+    from finance import BASE_PRICES
+
+    for territory in sorted(TERRITORY2CURRENCY):
+        fmt = TERRITORY2CURRENCY[territory]
+        price = BASE_PRICES[fmt.currency][-1] * 100
+        print "%5s:\t%s" % (territory, fmt.format(str(price)))""")
