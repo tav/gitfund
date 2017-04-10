@@ -89,6 +89,12 @@ mk('XK', 'Kosovo')
 remove('MV')
 remove('TJ')
 
+# - Remove Hungary (HU) as the Hungarian forint (HUF) creates values which
+#   exceed the Stripe charge limit of 9999999, and being inside the EU means
+#   we need to charge people from Hungary in forints for sane VAT purposes.
+#
+remove('HU')
+
 # - Although there are currently no official ISO 3166-1 codes for Spanish
 #   territories like Ceuta, Melilla, and the Canary Islands, codes have been
 #   reserved for them.
