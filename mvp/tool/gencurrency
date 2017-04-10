@@ -14,6 +14,7 @@ The countryInfo.txt file can be downloaded from:
 
 import sys
 
+from datetime import datetime
 from os import listdir
 from os.path import dirname, join, realpath
 
@@ -28,7 +29,7 @@ sys.path.append(join(dirname(dirname(realpath(__file__))), 'app'))
 
 from babel.core import get_global, Locale
 from babel.numbers import get_territory_currencies
-from finance import BASE_PRICES, ZERO_DECIMAL_CURRENCIES
+from finance import BASE_PRICES, EU_VAT, ZERO_DECIMAL_CURRENCIES, get_tax_spec
 from territories import TERRITORY_CODES
 
 DEBUG = False
@@ -78,7 +79,9 @@ OVERRIDE_LOCALES = {
     'AC': [('en', 'SH')],
     'AQ': [('en', 'US')],    # English for Antarctica. Perhaps should be Russian instead?
     'GS': [('en', 'GB')],    # English for South Georgia & South Sandwich Islands.
+    'MV': [('en', 'GB')],
     'TA': [('en', 'SH')],
+    'TJ': [('ky', 'KG')],    # Approximate to Kyrgyzstan's locale.
     'TF': [('fr', 'FR')],    # French for the French Southern Territories.
     'VA': [('it', 'IT')],    # Italian for Vatican City.
 }
@@ -338,6 +341,21 @@ for currency in BASE_PRICES:
         continue
     exit("Currency %r expects %d decimal places" % (currency, prec))
 
+# Figure out, for VAT purposes, which EU territories are set to use a different
+# currency from the national one.
+ALTERNATE_EU_VAT_CURRENCY = {}
+now = datetime.utcnow()
+for territory in TERRITORY2CURRENCY:
+    tax = get_tax_spec(territory, now)
+    if not tax:
+        continue
+    if not tax.type == EU_VAT:
+        continue
+    using = TERRITORY2CURRENCY[territory][0]
+    expected = get_territory_currencies(territory.split('-')[0])[0]
+    if using != expected:
+        ALTERNATE_EU_VAT_CURRENCY[territory] = expected
+
 if DEBUG:
     for currency in sorted(SEEN_SYMBOLS):
         print("%s: %s" % (currency, repr(SEEN_SYMBOLS[currency])))
@@ -358,6 +376,13 @@ Format = namedtuple(
     ]
 )
 
+ALTERNATE_EU_VAT_CURRENCY = {""")
+
+for territory in sorted(ALTERNATE_EU_VAT_CURRENCY):
+    print("    '%s': '%s'," % (territory, ALTERNATE_EU_VAT_CURRENCY[territory]))
+
+print("""}
+
 RTL_CURRENCIES = set([
     'EGP',
 ])
@@ -366,7 +391,7 @@ TERRITORY2CURRENCY = {""")
 
 for territory in sorted(TERRITORY2CURRENCY):
     fmt = TERRITORY2CURRENCY[territory]
-    print(" '%s': Format%s," % (territory, repr(fmt)))
+    print("    '%s': Format%s," % (territory, repr(fmt)))
 
 print("""}
 
