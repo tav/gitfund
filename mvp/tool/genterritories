@@ -89,12 +89,6 @@ mk('XK', 'Kosovo')
 remove('MV')
 remove('TJ')
 
-# - Remove Hungary (HU) as the Hungarian forint (HUF) creates values which
-#   exceed the Stripe charge limit of 9999999, and being inside the EU means
-#   we need to charge people from Hungary in forints for sane VAT purposes.
-#
-remove('HU')
-
 # - Although there are currently no official ISO 3166-1 codes for Spanish
 #   territories like Ceuta, Melilla, and the Canary Islands, codes have been
 #   reserved for them.
@@ -116,7 +110,7 @@ group('PT', 'PT-20', 'PT-30')
 # - Various areas have special EU VAT rules in relation to the sovereign state
 #   they are part of, but don't have independent ISO 3166 codes:
 #
-#   * Austria: Jungholz; Mittelberg.
+#   * Austria: Jungholz, and Mittelberg.
 #
 mk('AT-JU', 'Jungholz')
 mk('AT-MI', 'Mittelberg')
@@ -125,17 +119,29 @@ group('AT', 'AT-JU', 'AT-MI')
 
 #   * Cyprus: United Kingdom Sovereign Base Areas of Akrotiri and Dhekelia.
 #
-#   * Germany: Büsingen; Heligoland.
+#   * Germany: Büsingen, and Heligoland.
 #
 mk('DE-BU', 'Büsingen')
 mk('DE-HL', 'Heligoland')
 
 group('DE', 'DE-BU', 'DE-HL')
 
-#   * Greece: Chios; Cyclades; Dodecanese; Lesbos; Northern Sporades; Samos;
-#     Samothrace; Mount Athos; and shedloads of other islands.
+#   * Greece: Chios, Cyclades, Dodecanese, Lesbos, Northern Sporades, Samos,
+#     Samothrace, and Mount Athos. Some of which have ISO regional codes.
 #
-#   * Italy: Campione d'Italia; Lake Lugano; Livigno.
+mk('GR-85', 'Chios')
+mk('GR-82', 'Cyclades')
+mk('GR-81', 'Dodecanese')
+mk('GR-83', 'Lesbos')
+mk('GR-MA', 'Mount Athos')
+mk('GR-NS', 'Northern Sporades')
+mk('GR-84', 'Samos')
+mk('GR-ST', 'Samothrace')
+
+group('GR', 'GR-85', 'GR-82', 'GR-81', 'GR-83', 'GR-MA', 'GR-NS', 'GR-84', 'GR-ST')
+
+#   * Italy: Campione d'Italia, Lake Lugano, and Livigno.
+#
 mk('IT-CP', "Campione d'Italia")
 mk('IT-LV', 'Livigno')
 
