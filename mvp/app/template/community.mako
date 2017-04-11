@@ -18,7 +18,7 @@
 	</div>
 	<p>Or <a href="https://gitfund.slack.com/">sign in</a>.</p>
 	<div class="irc-info">
-		<p>If you prefer IRC, you can connect via:</p>
+		<p>Or, if you prefer IRC, you can join us on:</p>
 		<p><a href="irc://chat.freenode.net/esp">#esp on chat.freenode.net</a></p>
 	</div>
 </div></div>
