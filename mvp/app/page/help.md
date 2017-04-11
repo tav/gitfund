@@ -8,18 +8,16 @@ FAQ:
 
 ### Can I get invoices for accounting?
 
-You will eventually be able to download your invoices (including VAT invoices
-and credit notes) from the [invoices page](/invoices). This should be ready
-within the next four months.
-
-If you need invoices before then, then please email team@gitfund.io and we will
-manually generate those invoice documents for you.
+We are currently building the system to autogenerate invoice PDFs. You will be
+able to download them from the [transaction history page](/transaction.history)
+within two weeks after we publicly announcing the project.
 
 ### Is it possible to sponsor via bank transfer?
 
 We are ideally trying to get everyone to sponsor using credit/debit cards so as
-to validate our model. If you are not able to pay by card for some reason, then
-please email team@gitfund.io and we'll try and work something out.
+to validate our model of using Stripe to handle sponsorship contributions. If
+you are not able to pay by card for some reason, then please email
+team@gitfund.io and we'll try and work something out.
 
 ### How do I update my sponsorship details?
 
@@ -29,6 +27,18 @@ details.
 ### How do I cancel my monthly sponsorship?
 
 You can use the [cancel sponsorship page](/cancel.sponsorship) to do so.
+
+### What happens if you don't raise your base target?
+
+If we haven't reached the base target within 4 months of announcing the project,
+then, depending on the amount raised and our costs (especially with regards to
+legals and compliance), we will either:
+
+* Continue with the project — albeit delivering at a slightly slower pace than
+  expected.
+
+* Put the project on hold and cancel any further payments from sponsors. Leaving
+  everything we'd done as open source.
 
 ### How do I change the email address for my account?
 
@@ -40,12 +50,6 @@ associated with your account. We will do so in the future though!
 We use a passwordless system to authenticate users on the site. When you want to
 sign in, we'll send you an email that contains a special authorised link.
 
-Although passwordless systems met a lot of resistance at first, they are
-becoming increasingly popular now that sites like Medium [are using
-it](https://blog.medium.com/signing-in-to-medium-by-email-aacc21134fcd). And
-given that most GitFund users are likely to have reliable email access, we felt
-it was suitable for our userbase.
-
 ### Why do I have a blank profile picture?
 
 We use the [Gravatar](https://en.gravatar.com/) service in order to
@@ -54,11 +58,11 @@ already have a Gravatar profile as it is used by popular services like
 WordPress.
 
 If you would like to have a profile picture, please sign up on
-[Gravatar](https://en.gravatar.com/) using the same email address as you signed
-up with on GitFund, and upload the picture you would like to use.
+[Gravatar](https://en.gravatar.com/) using the same email address you used on
+GitFund, and upload the picture you would like to use.
 
 ### Why are displayed details not up-to-date?
 
 In order to make the site load faster, we make extensive use of caching. This
-sometimes results in stale information being shown for a few minutes while the
+sometimes results in stale information being shown for some time while the
 caches get updated.
