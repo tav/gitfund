@@ -1,4 +1,4 @@
-# Public Domain (-) 2015-2016 The GitFund Authors.
+# Public Domain (-) 2015-2017 The GitFund Authors.
 # See the GitFund UNLICENSE file for details.
 
 generate:
@@ -8,6 +8,7 @@ generate:
         - browser/js/fastclick.js
         - browser/js/particles.js
         - browser/js/spin.js
+        - browser/js/faye.js
         - browser/js/site.js
 
 - site.css:
