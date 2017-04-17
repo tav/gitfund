@@ -13,6 +13,7 @@ generate:
 
 - site.css:
     source:
+        - browser/css/font.css
         - browser/css/site.coffee
 
 - gfx/*:
