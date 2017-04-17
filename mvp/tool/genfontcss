@@ -1,0 +1,49 @@
+#! /usr/bin/env python3
+
+# Public Domain (-) 2017 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+"""Script to generate font.css."""
+
+import sys
+
+from base64 import b64encode
+from os import listdir
+from os.path import join
+
+if len(sys.argv[1:]) != 1:
+    print("Usage: genfontcss path/to/font/directory")
+    sys.exit(1)
+
+font_dir = sys.argv[1]
+for subdir in listdir(font_dir):
+    if subdir.startswith('.'):
+        continue
+    name = ' '.join(i.title() for i in subdir.split('-')[:-2])
+    subdir_path = join(font_dir, subdir)
+    variants = set()
+    for font_file in listdir(subdir_path):
+        if font_file.startswith('.'):
+            continue
+        ident = font_file.split('.')[0]
+        variant = ident.split('-')[-1]
+        italic = False
+        weight = 400
+        if variant.endswith('italic'):
+            italic = True
+            variant = variant[:-6]
+        if variant and variant != 'regular':
+            weight = int(variant)
+        variants.add((weight, italic, ident))
+    for weight, italic, ident in sorted(variants):
+        if italic:
+            style = 'italic'
+        else:
+            style = 'normal'
+        font_file = open(join(font_dir, subdir, ident + '.woff'), 'rb')
+        data = b64encode(font_file.read()).decode('utf-8')
+        font_file.close()
+        print("""@font-face {
+font-family: "%s";font-style: %s;font-weight: %d;
+src: url("data:application/font-woff;charset=utf-8;base64,%s") format('woff');
+}""" % (name, style, weight, data))
