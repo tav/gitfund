@@ -8,7 +8,19 @@ from decimal import Decimal
 # Globals
 # -----------------------------------------------------------------------------
 
-PLAN_FACTORS = [('bronze', 1), ('silver', 5), ('gold', 50), ('platinum', 100)]
+PLAN_FACTORS = {
+    'bronze': 1,
+    'silver': 5,
+    'gold': 50,
+    'platinum': 100
+}
+
+PLAN_SLOTS = {
+    'bronze': 500,
+    'silver': 100,
+    'gold': 10,
+    'platinum': 5
+}
 
 # From:
 # https://support.stripe.com/questions/which-zero-decimal-currencies-does-stripe-support
