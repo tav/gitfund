@@ -6,19 +6,6 @@ FAQ:
 
 [TOC]
 
-### Can I get invoices for accounting?
-
-We are currently building the system to autogenerate invoice PDFs. You will be
-able to download them from the [transaction history page](/transaction.history)
-within two weeks after we publicly announcing the project.
-
-### Is it possible to sponsor via bank transfer?
-
-We are ideally trying to get everyone to sponsor using credit/debit cards so as
-to validate our model of using Stripe to handle sponsorship contributions. If
-you are not able to pay by card for some reason, then please email
-team@gitfund.io and we'll try and work something out.
-
 ### How do I update my sponsorship details?
 
 You can use the [manage sponsorship page](/manage.sponsorship) to update your
@@ -30,7 +17,7 @@ You can use the [cancel sponsorship page](/cancel.sponsorship) to do so.
 
 ### What happens if you don't raise your base target?
 
-If we haven't reached the base target within 4 months of announcing the project,
+If we haven't reached the base target within 3 months of announcing the project,
 then, depending on the amount raised and our costs (especially with regards to
 legals and compliance), we will either:
 
@@ -64,5 +51,5 @@ GitFund, and upload the picture you would like to use.
 ### Why are displayed details not up-to-date?
 
 In order to make the site load faster, we make extensive use of caching. This
-sometimes results in stale information being shown for some time while the
+sometimes results in stale information being shown for some time until the
 caches get updated.
