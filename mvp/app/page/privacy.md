@@ -16,7 +16,7 @@ communications and services we offer relating to GitFund (collectively referred
 to as the **"Platform"**).
 
 This Privacy Policy does not apply to any website, product or service of any
-third party or other websites/platforms operated by Espians.
+third party, or other websites/platforms operated by Espians.
 
 ### Agreement
 
@@ -314,11 +314,6 @@ Personal Data about you being shared with them:
   to any of the hosts we use to run GitFund, your IP address may become visible
   to these service providers.
 
-* We use [Fanout] to broadcast real-time messages. They will be able to see
-  details like your IP address and browser. See their
-  [Privacy Policy][fanout-privacy] to better understand how they process and
-  handle data.
-
 * We use [G Suite] to handle our email and shared documents. See [how Google
   protects your data][google-data] to better understand how that data is
   processed and handled.
@@ -330,9 +325,6 @@ Personal Data about you being shared with them:
 * We run GitFund on top of the [Google Cloud] infrastructure. See their
   [Platform Security][google-cloud-security] page to better understand how they
   store and protect data.
-
-* We use [KeyCDN] as a content distribution network. See their [Privacy Policy]
-  [keycdn-privacy] to better understand how they store and protect data.
 
 * We use [Mailjet] to send emails. See their [Privacy Policy][mailjet-privacy]
   to better understand how they process and handle data.
@@ -447,15 +439,13 @@ Your continued use of the Platform after any change in this Privacy Policy will
 constitute your acceptance of such change.
 
 *This document is adapted from [Automattic's Privacy Policy][automattic],
-licensed under [CC-BY-SA], and was [last updated][revisions] on 2017-04-18.*
+licensed under [CC-BY-SA], and was [last updated][revisions] on 2017-05-02.*
 
 [Amazon Route 53]: https://aws.amazon.com/route53/
 [automattic]: https://automattic.com/privacy/
 [CC-BY-SA]: http://creativecommons.org/licenses/by-sa/4.0/
 [cookies]: /site/cookies
 [DNS Made Easy]: https://www.dnsmadeeasy.com/
-[Fanout]: https://fanout.io/
-[fanout-privacy]: https://fanout.io/legal/privacy-policy/
 [G Suite]: https://gsuite.google.com/
 [Google Analytics]: https://analytics.google.com/
 [Google Cloud]: https://cloud.google.com/
@@ -463,8 +453,6 @@ licensed under [CC-BY-SA], and was [last updated][revisions] on 2017-04-18.*
 [google-cloud-security]: https://cloud.google.com/security/
 [google-data]: https://gsuite.google.co.uk/intl/en_uk/learn-more/how_google_protects_your_data.html
 [JSON format]: https://en.wikipedia.org/wiki/JSON
-[KeyCDN]: https://www.keycdn.com/
-[keycdn-privacy]: https://www.keycdn.com/legal
 [Mailjet]: https://www.mailjet.com
 [mailjet-privacy]: https://www.mailjet.com/privacy-policy
 [revisions]: https://github.com/tav/gitfund/commits/master/mvp/app/page/privacy.md
