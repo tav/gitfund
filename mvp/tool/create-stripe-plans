@@ -40,7 +40,8 @@ stripe.api_key = STRIPE_SECRET_KEY
 print ">> Validating currencies ..."
 
 to_remove = set()
-max_factor = PLAN_FACTORS[-1][1]
+plan_spec = sorted(PLAN_FACTORS.items(), key=lambda item: item[1])
+max_factor = plan_spec[-1][1]
 
 for currency in sorted(BASE_PRICES):
     for base_price in BASE_PRICES[currency]:
@@ -64,7 +65,7 @@ print ">> Creating stripe plans ..."
 for currency in sorted(BASE_PRICES):
     for idx, base_price in enumerate(BASE_PRICES[currency]):
         version = idx + 1
-        for plan_id, factor in PLAN_FACTORS:
+        for plan_id, factor in plan_spec:
             id = "gitfund.%s.%s.v%s" % (plan_id, currency.lower(), version)
             try:
                 plan = stripe.Plan.retrieve(id)
