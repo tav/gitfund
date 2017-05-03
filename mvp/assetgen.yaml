@@ -8,7 +8,6 @@ generate:
         - browser/js/fastclick.js
         - browser/js/particles.js
         - browser/js/spin.js
-        - browser/js/faye.js
         - browser/js/site.js
 
 - site.css:
