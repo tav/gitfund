@@ -1,0 +1,66 @@
+#! /usr/bin/env python3
+
+# Public Domain (-) 2017 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+"""Script to find unused CSS classes."""
+
+import re
+import sys
+
+from os import listdir
+from os.path import join
+
+if len(sys.argv) != 3:
+    print("Usage: check-css path/to/style.coffee path/to/templates/directory")
+    sys.exit(1)
+
+css_path, templates_dir = sys.argv[1:]
+
+classes = set()
+with open(css_path, 'r') as css_file:
+    for line in css_file:
+        line = line.strip()
+        if not line.endswith(':'):
+            continue
+        if '@' in line:
+            continue
+        if '#' in line:
+            continue
+        if '.' not in line:
+            continue
+        line = line[1:-2]
+        for selector in line.split(','):
+            for cls in selector.strip().split('.', 1)[1].split('.'):
+                classes.add(cls)
+
+templates = []
+for filename in listdir(templates_dir):
+    if not filename.endswith('.mako'):
+        continue
+    with open(join(templates_dir, filename), 'r') as tmpl:
+        templates.append((filename, tmpl.read()))
+
+for cls in sorted(classes):
+    found = False
+    seen = []
+    for filename, tmpl in templates:
+        if cls in tmpl:
+            if re.findall('class="[^"]*%s[^"]*"' % cls, tmpl):
+                found = True
+            else:
+                seen.append(tmpl)
+    if not found:
+        print("!! Potentially unused: .%s\n" % cls)
+        for tmpl in seen:
+            max = len(tmpl)
+            start = end = tmpl.find(cls)
+            while start > 0:
+                if tmpl[start] == '\n':
+                    break
+                start -= 1
+            while end < max:
+                if tmpl[end] == '\n':
+                    break
+                end += 1
+            print('\t' + tmpl[start:end].strip() + '\n')
