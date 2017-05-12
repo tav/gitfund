@@ -31,13 +31,69 @@ Service. If you do not agree:
 * And do not visit or use GitFund again.
 
 Any continued use of GitFund will signify your acceptance of these Terms of
-Service.
+Service. Violation of any of these terms will result in the termination of any
+accounts you may have on GitFund.
 
 ### Privacy
 
 The use of GitFund is subject to our current [Privacy Policy], which is located
 at https://gitfund.io/site/privacy and is incorporated into these Terms of
 Service.
+
+### Intellectual Property
+
+Your intellectual property is your own.
+
+We may provide you with the means to upload, submit, distribute or otherwise
+post user-generated content on or through GitFund ("**Content**"). By making
+available any such Content:
+
+* You acknowledge and agree that you are solely responsible for all Content that
+  you make available. Accordingly, you represent and warrant that you are either
+  the sole and exclusive owner of all Content that you make available or have
+  all rights, licenses, consents and releases that are necessary to grant the
+  rights as required by these Terms of Service.
+
+* You grant Espians a worldwide, non-exclusive, irrevocable, perpetual (or for
+  the term of the protection), transferable, royalty-free license, with the
+  right to sublicense, to use, view, copy, adapt, translate, modify, prepare
+  derivative works of, distribute, license, sell, transfer, display, perform,
+  transmit, and otherwise fully exploit ("**Use**") the Content in connection
+  with GitFund and Espian's (and its successors and assigns) business, including
+  without limitation for promoting and delivering GitFund in any media format
+  and through any media channel (including, without limitation, third party
+  websites).
+
+* You grant each user of GitFund a worldwide, non-exclusive license to access
+  the Content through GitFund, and to Use the Content as permitted through
+  GitFund's functionality and under these Terms of Service.
+
+* You agree to not assert against us any moral rights you may have relating to
+  the Content, including the rights of integrity and attribution, so that we may
+  reasonably operate GitFund.
+
+* You understand that you will not receive any payment for any of the rights
+  granted above.
+
+We do not claim any ownership rights in any such Content and nothing in these
+Terms of Service will be deemed to restrict any rights that you may have to use
+and exploit any such Content.
+
+### Content Restrictions
+
+We may remove Content or terminate accounts containing Content that we determine
+at our sole discretion to be unlawful, offensive, threatening, libelous,
+defamatory, pornographic, obscene or otherwise objectionable or violates any
+party's intellectual property or these Terms of Service.
+
+### Sponsorship
+
+By sponsoring a project on GitFund, you are giving us permission to charge you
+on a monthly recurring basis through any payment methods that you have
+authorised, until your sponsorship is cancelled.
+
+Sponsorship of a project does not give you any right or control over the project
+that you are sponsoring.
 
 ### Disclaimers
 
@@ -64,7 +120,7 @@ provider) equipment failure, natural events, acts of war, or legal restrictions
 and censorship.
 
 Nothing in these Terms of Service excludes or limits the liability of Espians
-and its members, employees, agents, partners or suppliers for:
+or its members, employees, agents, partners or suppliers for:
 
 1. death or personal injury caused by negligence;
 
@@ -147,7 +203,7 @@ periodically for any such changes.
 Your continued use of GitFund after any change in these Terms of Service will
 constitute your acceptance of such change.
 
-*This document was [last updated][revisions] on 2017-05-02.*
+*This document was [last updated][revisions] on 2017-05-12.*
 
 [Privacy Policy]: /site/privacy
 [revisions]: https://github.com/tav/gitfund/commits/master/mvp/app/page/terms.md
