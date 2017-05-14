@@ -1,0 +1,6 @@
+#! /usr/bin/env bash
+
+# Public Domain (-) 2017 The GitFund Authors.
+# See the GitFund UNLICENSE file for details.
+
+go run relay.go ../../private/cmd/irc-slack/config.yaml
