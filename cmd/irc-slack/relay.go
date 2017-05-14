@@ -1,4 +1,4 @@
-// Public Domain (-) 2016 The GitFund Authors.
+// Public Domain (-) 2016-2017 The GitFund Authors.
 // See the GitFund UNLICENSE file for details.
 
 package main
@@ -20,29 +20,37 @@ import (
 
 var (
 	config    = &Config{}
-	ircMsgs   = make(chan string, 10000)
-	slackMsgs = make(chan string, 10000)
+	ircMsgs   = make(chan *Message, 10000)
+	slackMsgs = make(chan *Message, 10000)
 )
 
 type Config struct {
+	Channels []struct {
+		IRC         string
+		IRCIgnore   []string `yaml:"irc_ignore"`
+		IRCPrivacy  bool     `yaml:"irc_privacy"`
+		Slack       string
+		SlackIgnore []string `yaml:"slack_ignore"`
+	}
 	IRC struct {
 		Auth struct {
 			Type     string
 			Password string
 		}
-		Channel string
 		Nick    string
 		Port    int
-		Privacy bool
 		QuitMsg string
 		Server  string
 		TLS     bool
 	}
 	Slack struct {
-		API     string `yaml:"api_token"`
-		Channel string
-		Ignore  []string
+		API string `yaml:"api_token"`
 	}
+}
+
+type Message struct {
+	Channel string
+	Text    string
 }
 
 func exit(err error) {
@@ -51,9 +59,6 @@ func exit(err error) {
 }
 
 func ircBot() {
-
-	channel := config.IRC.Channel
-	privacy := config.IRC.Privacy
 
 	// Configure the connection.
 	conn := irc.IRC(config.IRC.Nick, config.IRC.Nick)
@@ -64,29 +69,59 @@ func ircBot() {
 		conn.UseTLS = true
 	}
 
+	type Spec struct {
+		Slack   string
+		Ignore  map[string]bool
+		Privacy bool
+	}
+
+	// Get the specs for the IRC channels.
+	channels := map[string]*Spec{}
+	for _, spec := range config.Channels {
+		ignore := map[string]bool{}
+		for _, nick := range spec.IRCIgnore {
+			ignore[strings.ToLower(nick)] = true
+		}
+		channels[strings.ToLower(spec.IRC)] = &Spec{
+			Ignore:  ignore,
+			Privacy: spec.IRCPrivacy,
+			Slack:   spec.Slack,
+		}
+	}
+
 	// Add callback to identify with auth providers and join the channel as soon
 	// as a connection is established.
 	conn.AddCallback("001", func(e *irc.Event) {
 		if config.IRC.Auth.Type == "nickserv" {
 			conn.Privmsgf("nickserv", "identify %s %s", config.IRC.Nick, config.IRC.Auth.Password)
 		}
-		conn.Join(channel)
+		for channel, _ := range channels {
+			conn.Join(channel)
+		}
 	})
 
 	handleMsg := func(e *irc.Event) {
 		if len(e.Arguments) != 2 {
 			return
 		}
-		if e.Arguments[0] != channel {
+		spec, ok := channels[strings.ToLower(e.Arguments[0])]
+		if !ok {
+			return
+		}
+		if spec.Ignore[strings.ToLower(e.Nick)] {
 			return
 		}
 		if e.Code == "PRIVMSG" {
-			if privacy && strings.HasPrefix(e.Arguments[1], "#") {
+			if spec.Privacy && strings.HasPrefix(e.Arguments[1], "#") {
 				return
 			}
-			ircMsgs <- fmt.Sprintf("<%s> %s", e.Nick, e.Arguments[1])
+			ircMsgs <- &Message{
+				spec.Slack, fmt.Sprintf("<%s> %s", e.Nick, e.Arguments[1]),
+			}
 		} else {
-			ircMsgs <- fmt.Sprintf("* %s %s", e.Nick, e.Arguments[1])
+			ircMsgs <- &Message{
+				spec.Slack, fmt.Sprintf("* %s %s", e.Nick, e.Arguments[1]),
+			}
 		}
 	}
 
@@ -107,25 +142,42 @@ func ircBot() {
 
 	// Post Slack messages as they arrive.
 	for msg := range slackMsgs {
-		if len(msg) > 350 {
-			msg = msg[:350]
-			if msg[349] == ' ' {
-				msg += "... [truncated]"
+		text := msg.Text
+		if len(text) > 350 {
+			text = text[:350]
+			if text[349] == ' ' {
+				text += "... [truncated]"
 			} else {
-				msg += " ... [truncated]"
+				text += " ... [truncated]"
 			}
 		}
-		conn.Privmsg(channel, msg)
+		conn.Privmsg(msg.Channel, text)
 	}
 
 }
 
 func slackBot() {
 
+	type Spec struct {
+		Ignore map[string]bool
+		IRC    string
+	}
+
+	channels := map[string]*Spec{}
 	client := slack.New(config.Slack.API)
-	channel := stripHash(config.Slack.Channel)
-	channelID := ""
+	id2names := map[string]string{}
 	users := map[string]string{}
+
+	for _, spec := range config.Channels {
+		ignore := map[string]bool{}
+		for _, user := range spec.SlackIgnore {
+			ignore[strings.ToLower(user)] = true
+		}
+		channels[strings.ToLower(spec.Slack)] = &Spec{
+			Ignore: ignore,
+			IRC:    spec.IRC,
+		}
+	}
 
 	getUser := func(userID string) (string, error) {
 		user, exists := users[userID]
@@ -241,14 +293,9 @@ func slackBot() {
 			AsUser: true,
 		}
 		for msg := range ircMsgs {
-			client.PostMessage(channel, msg, params)
+			client.PostMessage(msg.Channel, msg.Text, params)
 		}
 	}()
-
-	ignore := map[string]bool{}
-	for _, user := range config.Slack.Ignore {
-		ignore[strings.ToLower(user)] = true
-	}
 
 	self, err := client.AuthTest()
 	if err != nil {
@@ -271,32 +318,50 @@ func slackBot() {
 			if e.User == selfID {
 				break
 			}
-			if channelID == "" {
-				info, err := client.GetChannelInfo(e.Channel)
-				if err != nil {
-					fmt.Printf("ERROR: Unable to get channel info for %s: %s", e.Channel, err)
-					break
-				}
-				if info.Name == channel {
-					channelID = e.Channel
+			channel, exists := id2names[e.Channel]
+			if !exists {
+				if strings.HasPrefix(e.Channel, "C") {
+					info, err := client.GetChannelInfo(e.Channel)
+					if err != nil {
+						fmt.Printf("ERROR: Unable to get channel info for %s: %s\n", e.Channel, err)
+						break
+					}
+					channel = strings.ToLower(info.Name)
+					if !strings.HasPrefix(channel, "#") {
+						channel = "#" + channel
+					}
+					id2names[e.Channel] = channel
+				} else if strings.HasPrefix(e.Channel, "G") {
+					info, err := client.GetGroupInfo(e.Channel)
+					if err != nil {
+						fmt.Printf("ERROR: Unable to get channel info for %s: %s\n", e.Channel, err)
+						break
+					}
+					channel = strings.ToLower(info.Name)
+					id2names[e.Channel] = channel
 				}
 			}
-			if e.Channel != channelID {
+			spec, ok := channels[channel]
+			if !ok {
 				break
 			}
 			user, err := getUser(e.User)
 			if err != nil {
-				fmt.Printf("ERROR: Unable to get user info for %s: %s", e.User, err)
+				fmt.Printf("ERROR: Unable to get user info for %s: %s\n", e.User, err)
 				break
 			}
-			if ignore[strings.ToLower(user)] {
+			if spec.Ignore[strings.ToLower(user)] {
 				break
 			}
 			text := getPlaintext(e.Text)
 			if e.SubType == "" {
-				slackMsgs <- fmt.Sprintf("<%s> %s", user, text)
+				slackMsgs <- &Message{
+					spec.IRC, fmt.Sprintf("<%s> %s", user, text),
+				}
 			} else if e.SubType == "me_message" {
-				slackMsgs <- fmt.Sprintf("* %s %s", user, text)
+				slackMsgs <- &Message{
+					spec.IRC, fmt.Sprintf("* %s %s", user, text),
+				}
 			}
 		case *slack.InvalidAuthEvent:
 			exit(errors.New("slack: invalid auth credentials"))

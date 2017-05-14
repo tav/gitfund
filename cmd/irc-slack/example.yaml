@@ -1,5 +1,15 @@
-# Public Domain (-) 2016 The GitFund Authors.
+# Public Domain (-) 2016-2017 The GitFund Authors.
 # See the GitFund UNLICENSE file for details.
+
+channels:
+
+- irc: "#your-irc-channel-name-here"
+  irc_ignore:
+  - "some-noisy-irc-bot"
+  irc_privacy: true
+  slack: "#your-slack-channel-name-here"
+  slack_ignore:
+  - "some-noisy-slack-bot"
 
 irc:
 
@@ -9,7 +19,6 @@ irc:
     type: "nickserv"
     password: "nickserv-password-here"
 
-  channel: "#your-irc-channel-name-here"
   nick: "ircbot-nick-here"
   quitmsg: "Custom quit message here!"
 
@@ -24,6 +33,3 @@ slack:
   #   https://my.slack.com/services/new/bot
   #
   api_token: "slack api token here"
-  channel: "your-slack-channel-name-here"
-  ignore:
-  - "some-noisy-bot"
