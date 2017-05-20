@@ -95,6 +95,40 @@ authorised, until your sponsorship is cancelled.
 Sponsorship of a project does not give you any right or control over the project
 that you are sponsoring.
 
+### Sponsor Profile
+
+As a sponsor, your sponsorship link text, link URL, and image (your "**Sponsor
+Profile**"), will be displayed at random as part of the "Sponsored By" widgets.
+Your Sponsor Profile must satisfy the following conditions:
+
+* If you are sponsoring as an individual, then:
+
+  * The link text must be your name or a pseudonym that you are publicly known
+    by.
+
+  * The link URL must point to your personal homepage, blog, or your social
+    media profile.
+
+  * The image must be a photo or avatar representing you as an individual.
+
+* If you are sponsoring on behalf of a company, then:
+
+  * The link text must either be your company name, the brand name of one of
+    your products, or text advertising a job opportunity or opportunities at
+    your company.
+
+  * The link URL must point to either your company website or blog, the website
+    or blog of one of your products, the website or blog or page relating to
+    your open source efforts, or a page relating to a job opportunity or
+    opportunities at your company.
+
+  * The image must be either your company logo or the logo of one of your
+    products.
+
+We may, at our sole discretion, cancel your sponsorship if for any reason we
+find your Sponsor Profile unsuitable for the type of community we are trying to
+build. So please avoid anything inappropriate.
+
 ### Disclaimers
 
 You use GitFund at your own risk.
@@ -203,7 +237,7 @@ periodically for any such changes.
 Your continued use of GitFund after any change in these Terms of Service will
 constitute your acceptance of such change.
 
-*This document was [last updated][revisions] on 2017-05-12.*
+*This document was [last updated][revisions] on 2017-05-20.*
 
 [Privacy Policy]: /site/privacy
 [revisions]: https://github.com/tav/gitfund/commits/master/mvp/app/page/terms.md
