@@ -34,33 +34,24 @@ with open(css_path, 'r') as css_file:
             for cls in selector.strip().split('.', 1)[1].split('.'):
                 classes.add(cls)
 
-templates = []
+seen = set()
 for filename in listdir(templates_dir):
     if not filename.endswith('.mako'):
         continue
     with open(join(templates_dir, filename), 'r') as tmpl:
-        templates.append((filename, tmpl.read()))
+        tmpl = tmpl.read()
+        for match in re.findall('class="([^"]*[^"]*)"', tmpl):
+            if '$' in match:
+                left, right = match.split('${', 1)
+                for submatch in re.findall("'([^']*[^']*)'", match):
+                    for cls in filter(None, submatch.split()):
+                        seen.add(cls)
+                for cls in filter(None, left.split()):
+                    seen.add(cls)
+            else:
+                for cls in filter(None, match.split()):
+                    seen.add(cls)
 
 for cls in sorted(classes):
-    found = False
-    seen = []
-    for filename, tmpl in templates:
-        if cls in tmpl:
-            if re.findall('class="[^"]*%s[^"]*"' % cls, tmpl):
-                found = True
-            else:
-                seen.append(tmpl)
-    if not found:
+    if cls not in seen:
         print("!! Potentially unused: .%s\n" % cls)
-        for tmpl in seen:
-            max = len(tmpl)
-            start = end = tmpl.find(cls)
-            while start > 0:
-                if tmpl[start] == '\n':
-                    break
-                start -= 1
-            while end < max:
-                if tmpl[end] == '\n':
-                    break
-                end += 1
-            print('\t' + tmpl[start:end].strip() + '\n')
