@@ -9,9 +9,24 @@
 <meta name="author" content="Espians">
 % if ctx.site_description:
 <meta name="description" content="${ctx.site_description|h}">
+% if ctx.site_image:
+<meta name="twitter:card" content="summary_large_image">
+% else:
+<meta name="twitter:card" content="summary">
+% endif
+% if ctx.site_title:
+<meta name="twitter:title" content="${ctx.site_title|h}">
+% elif ctx.page_title:
+<meta name="twitter:title" content="${ctx.page_title|h} · GitFund">
+% else:
+<meta name="twitter:title" content="GitFund">
+% endif
+<meta name="twitter:description" content="${ctx.site_description|h}">
 % endif
 % if ctx.site_image:
 <meta property="og:image" content="${ctx.site_image}">
+<meta property="twitter:image" content="${ctx.site_image}">
+<meta property="image-attribution" content="${ctx.site_image_attribution}">
 % endif
 % if ctx.noindex:
 <meta name="robots" content="noindex">
@@ -19,7 +34,6 @@
 <meta name="emoji-attribution" content="Emoji art provided by EmojiOne under CC-BY-4.0">
 <link rel="icon" type="image/png" href="/favicon.ico?v=1">
 <link rel="stylesheet" href="${STATIC('site.css')}">
-<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:200,400|Open+Sans:300,400,700">
 <body>
 <script src="${STATIC('site.js')}"></script>
 % if ctx.stripe_js:
@@ -30,7 +44,7 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 % endif
 <div class="main">
 <div class="header"><div class="inner">
-	<div class="navicon"><img src="${STATIC('gfx/menu.icon.svg')}"></div>
+	<div class="navicon"><div></div></div>
 	<div class="navlinks">
 		<a href="/site.sponsors">Sponsors</a>
 		<a href="/community">Slack/IRC Community</a>
@@ -43,6 +57,37 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 <div class="body">
 ${content}
 </div>
+% if ctx.show_sponsors_footer:
+<% sponsors = ctx.get_site_sponsors() %>
+% if sponsors:
+<div id="sponsored-by" class="sponsored-by-heading"><div class="inner">
+<h3>THANKS TO OUR SPONSORS:</h3>
+</div></div>
+<div class="sponsored-by-profiles"><div class="inner">
+% for sponsor in sponsors:
+	<div class="sponsor-profile">
+		<div class="sponsor-image">
+		% if sponsor['url']:
+			<a href="${sponsor['url']|h}"><img src="${ctx.get_sponsor_image_url(sponsor, '300')}"></a>
+		% else:
+			<img src="${ctx.get_sponsor_image_url(sponsor, '300')}">
+		% endif
+		</div>
+		% if sponsor['text']:
+		<div class="sponsor-link">
+			% if sponsor['url']:
+			<a href="${sponsor['url']|h}">${sponsor['text']|h}</a>
+			% else:
+			<a href="#">${sponsor['text']|h}</a>
+			% endif
+		</div>
+		% endif
+	</div>
+% endfor
+<div class="clear"></div>
+</div></div>
+% endif
+% endif
 </div>
 <div class="footer"><div class="inner"><div class="footer-content">
 <ul>
@@ -63,7 +108,7 @@ ${content}
 </ul>
 <ul>
 	<li>Follow Us</li>
-	<li><a href="https://www.facebook.com/gitfund"><img src="${STATIC('gfx/facebook.grey.svg')}" style="margin-top: -8px; margin-left: -4px; margin-right: 8px">Facebook</a></li>
-	<li><a href="https://twitter.com/gitfund"><img src="${STATIC('gfx/twitter.grey.svg')}" style="margin-left: -2px; margin-right: 2px">Twitter</a></li>
+	<li><a class="footer-facebook" href="https://www.facebook.com/gitfund">Facebook</a></li>
+	<li><a class="footer-twitter" href="https://twitter.com/gitfund">Twitter</a></li>
 </ul>
 </div></div></div>
