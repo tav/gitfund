@@ -8,8 +8,9 @@ import re
 
 from base64 import b32encode, b64encode, urlsafe_b64encode
 from cgi import escape
+from collections import namedtuple
 from datetime import datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN
+from decimal import Decimal, ROUND_HALF_UP
 from hashlib import sha256
 from hmac import HMAC
 from json import dumps as encode_json, loads as decode_json
@@ -45,8 +46,13 @@ from weblite import (
 import cloudstorage as gcs
 import stripe
 
+from currency import TERRITORY2CURRENCY
 from emoji import EMOJI_MAP, EMOJI_SHORTCODES
-from finance import BASE_PRICES, PLAN_FACTORS, PLAN_SLOTS
+from finance import (
+    BASE_PRICES, DISPLAY_WITH_TAX, PLAN_FACTORS, PLAN_SLOTS, TAX_NOTICES,
+    ZERO_DECIMAL_CURRENCIES, get_tax_spec
+    )
+
 from gfm import (
     AutolinkExtension, AutomailExtension, SpacedLinkExtension,
     StrikethroughExtension
@@ -172,7 +178,10 @@ def pluralise(label, count):
         return label
     return label + 's'
 
+Context.LIVE = LIVE
+Context.ON_GOOGLE = ON_GOOGLE
 Context.STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY
+
 Context.current_year = staticmethod(current_year)
 Context.get_site_sponsors = staticmethod(get_site_sponsors)
 Context.get_sponsor_image_url = staticmethod(get_sponsor_image_url)
@@ -218,6 +227,72 @@ def get_local(ident, force=False):
 # -----------------------------------------------------------------------------
 # Local Cache Generator Functions
 # -----------------------------------------------------------------------------
+
+def get_raised_totals():
+    pass
+
+def get_pricing_info():
+    basic = {}
+    detailed = {}
+    now = datetime.utcnow()
+    plan_factors = sorted(PLAN_FACTORS.items(), key=lambda item: item[1])
+    territory2tax = {}
+    for territory, fmt in TERRITORY2CURRENCY.iteritems():
+        currency = fmt.currency
+        base_price = BASE_PRICES[fmt.currency][-1]
+        tax = get_tax_spec(territory, now)
+        tax_rate = tax_regime = ''
+        if tax:
+            tax_rate = str(tax.rate)
+            tax_regime = tax.type
+            territory2tax[territory] = tax
+        else:
+            territory2tax[territory] = None
+        display = []
+        prices = []
+        taxes = []
+        totals = []
+        for plan, factor in plan_factors:
+            price = Decimal(base_price * factor)
+            if tax:
+                tax_amount = price * (tax.rate / 100)
+                total = price + tax_amount
+            else:
+                total = price
+            if int(total) == total:
+                price_str = fmt.format(price)
+                if tax:
+                    tax_amount_str = fmt.format(tax_amount)
+                total_str = fmt.format(total)
+            elif currency in ZERO_DECIMAL_CURRENCIES:
+                raise ValueError(
+                    "Got value with decimals when calculating price and taxes for %s"
+                    % currency
+                    )
+            else:
+                price_str = fmt.format(price.quantize(TWO_DECIMAL_PLACES), True)
+                tax_amount = tax_amount.quantize(TWO_DECIMAL_PLACES, rounding=ROUND_HALF_UP)
+                tax_amount_str = fmt.format(tax_amount, True)
+                total = total.quantize(TWO_DECIMAL_PLACES, rounding=ROUND_HALF_UP)
+                total_str = fmt.format(total, True)
+            if territory in DISPLAY_WITH_TAX:
+                display.append(total_str)
+            else:
+                display.append(price_str)
+            prices.append(price_str)
+            if tax:
+                taxes.append(tax_amount_str)
+            totals.append(total_str)
+        basic[territory] = BasicPrice(tuple(display), tax_regime)
+        detailed[territory] = DetailedPrice(
+            tuple(prices), tuple(taxes), tuple(totals), tax_regime, tax_rate
+            )
+    js_basic = ';'.join([
+        'TAX_NOTICES=%s' % minjson(TAX_NOTICES),
+        gen_js_territory_data('BASIC_PRICES', basic)
+    ])
+    js_detailed = gen_js_territory_data('DETAILED_PRICES', detailed)
+    return basic, js_basic, detailed, js_detailed, territory2tax
 
 def get_social_profiles():
     cache = get_cache_multi(SOCIAL_MEMCACHE_KEYS)
@@ -332,7 +407,7 @@ def get_sha256_jwt(issuer, secret, expiration=None):
     payload = {'iss': issuer}
     if expiration:
         payload['exp'] = int(time()) + expiration
-    payload = jwt_encode(encode_json(payload, separators=(',', ':')))
+    payload = jwt_encode(minjson(payload))
     signature = jwt_encode(HMAC(secret, header+'.'+payload, sha256).digest())
     return header + '.' + payload + '.' + signature
 
@@ -392,10 +467,10 @@ def send_email(ctx, subject, name, email, template, **kwargs):
         'Subject': subject,
         'Html-part': body
     }
-    # if not ON_GOOGLE:
-    #     logging.info("Skipping sending of email: %r" % subject)
-    #     logging.info("Email body:\n%s\n" % body)
-    #     return
+    if not ON_GOOGLE:
+        logging.info("Skipping sending of email: %r" % subject)
+        logging.info("Email body:\n%s\n" % body)
+        return
     try:
         resp = urlfetch(
             MAILJET_API_URL, encode_json(fields), POST,
@@ -550,13 +625,33 @@ def write_file(path, data):
     f.close()
 
 # -----------------------------------------------------------------------------
-# Finance-related Utility Functions
+# Finance-related Utilities
 # -----------------------------------------------------------------------------
 
 TWO_DECIMAL_PLACES = Decimal('0.01')
 FOUR_DECIMAL_PLACES = Decimal('0.0001')
-
 PLAN_PORTIONS = {}
+
+BasicPrice = namedtuple('BasicPrice', ['plans', 'tax_regime'])
+
+DetailedPrice = namedtuple(
+    'DetailedPrice', ['base', 'taxes', 'totals', 'tax_regime', 'tax_rate']
+)
+
+def gen_js_territory_data(varname, dataset):
+    idx = 0
+    data = []; append_data = data.append
+    output = []; out = output.append
+    seen = {}
+    for territory in sorted(dataset):
+        value = dataset[territory]
+        tcode = territory.lower().replace('-', '_')
+        if value not in seen:
+            append_data(encode_json(value))
+            seen[value] = idx
+            idx += 1
+        out("%s:%d" % (tcode, seen[value]))
+    return "%s={%s};%s_DATA=[%s]" % (varname, ','.join(output), varname, ','.join(data))
 
 def get_stripe_plan(currency, plan):
     return 'gitfund.%s.%s.v%d' % (
@@ -591,21 +686,6 @@ def is_email(email, match_addr=re.compile(r'.+\@.+').match):
         return
     return True
 
-def gen_js_territory_data(varname, dataset):
-    idx = 0
-    data = []; append_data = data.append
-    output = []; out = output.append
-    seen = {}
-    for territory in sorted(dataset):
-        value = dataset[territory]
-        tcode = territory.lower().replace('-', '_')
-        if value not in seen:
-            append_data(encode_json(value))
-            seen[value] = idx
-            idx += 1
-        out("%s:%d" % (tcode, seen[value]))
-    return "%s={%s};%s_DATA=[%s]" % (varname, ','.join(output), varname, ','.join(data))
-
 def get_login_key_name(email):
     return 'e.' + b32encode(email.lower().encode('utf-8')).rstrip('=')
 
@@ -616,6 +696,9 @@ def get_user_from_email(email):
     if not login.user_id:
         return
     return User.get_by_id(login.user_id)
+
+def minjson(data):
+    return encode_json(data, separators=(',', ':'))
 
 def read(path):
     f = open(path, 'rb')
@@ -676,7 +759,7 @@ def frontpage(ctx, **kwargs):
 def admin(ctx, key=None, xsrf=None):
     ctx.page_title = "Admin"
     if ctx.is_admin:
-        raise Redirect('/admin.sponsors')
+        raise Redirect('/users.list')
     if key is None:
         return {}
     ctx.validate_xsrf(xsrf)
@@ -686,11 +769,7 @@ def admin(ctx, key=None, xsrf=None):
             "error": "Invalid auth key. This failed attempt has been logged for security purposes."
         }
     ctx.set_secure_cookie('admin', ADMIN_AUTH_KEY)
-    raise Redirect('/admin.sponsors')
-
-@handle(['admin.sponsors', 'site'])
-def admin_sponsors(ctx, cursor=None):
-    site.page_title = "Sponsors (Admin View)"
+    raise Redirect('/users.list')
 
 @handle
 def auth(ctx, token=None, return_to=None):
@@ -1045,6 +1124,28 @@ def update_sponsor_profile(ctx, link_text='', link_url='', image=None, xsrf=None
         'updated': True,
     }
 
+@handle(['users.list', 'site'])
+def users_list(ctx, cursor=None):
+    site.page_title = "Users List"
+    if not ctx.is_admin:
+        raise Redirect('/admin')
+    q = User.all().order('-updated')
+    if cursor:
+        q = q.with_cursor(cursor)
+        cursor = None
+    users = []
+    prev_point = None
+    for user in q.run(batch_size=100):
+        if len(users) == 100:
+            cursor = prev_point
+            break
+        users.append(user)
+        prev_point = q.cursor()
+    return {
+        'cursor': cursor,
+        'users': users,
+    }
+
 @handle
 def validate_vat(ctx):
     pass
@@ -1116,7 +1217,10 @@ CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md'))
 
 def init_state():
 
+    # Decrease the pricing.info duration when tax rates are about to change.
     for ident, duration, generator in [
+        ('raised.totals', 60, get_raised_totals),
+        ('pricing.info', 86400, get_pricing_info),
         ('social.profiles', 300, get_social_profiles),
         ('sponsors', 60, get_sponsors),
     ]:
