@@ -368,6 +368,7 @@ print("""# encoding: utf-8
 
 from __future__ import unicode_literals
 from collections import namedtuple
+from decimal import Decimal
 
 Format = namedtuple(
     'Format', [
@@ -401,7 +402,9 @@ print("""}
 # Expects amount to be a string. If with_decimals is set to True, then the
 # amount needs to have been quantized to the appropriate decimal places.
 # Otherwise, it needs to be an integral value.
-def format(self, amount, with_decimals=False, as_html=False):
+def format(self, amount, with_decimals=False, as_html=True):
+    if isinstance(amount, Decimal):
+        amount = str(amount)
     if with_decimals:
         amount, rem = amount.split('.')
     gsize, ngsize = self.grouping
