@@ -315,7 +315,7 @@ for territory in sorted(TERRITORY_CODES):
         prefix, suffix = TERRITORY_FORMATS[territory]
 
     # Normalise the prefix/suffix for non-US currencies denominated in dollars.
-    if currency_symbol.endswith('$') and currency != '$':
+    if currency_symbol.endswith('$') and territory != 'US':
         if prefix and prefix != '¤\xa0':
             prefix = '¤\xa0'
         elif suffix and suffix != '\xa0¤':
