@@ -161,6 +161,12 @@ def get_sponsor_image_url(info, size=None):
             return GRAVATAR_PREFIX + val + GRAVATAR_SUFFIX + '&s=' + size
         return GRAVATAR_PREFIX + val + GRAVATAR_SUFFIX
 
+def get_territory(ctx, default='US'):
+    territory = ctx.environ.get('HTTP_X_APPENGINE_COUNTRY')
+    if territory in TERRITORY2CURRENCY:
+        return territory
+    return default
+
 def linkify_github_bio(text):
     return replace_github_usernames(create_github_profile_link, escape(text))
 
@@ -178,13 +184,21 @@ def pluralise(label, count):
         return label
     return label + 's'
 
+Context.CAMPAIGN_DESCRIPTION = CAMPAIGN_DESCRIPTION
+Context.CAMPAIGN_TEAM = CAMPAIGN_TEAM
+Context.CAMPAIGN_TITLE = CAMPAIGN_TITLE
 Context.LIVE = LIVE
 Context.ON_GOOGLE = ON_GOOGLE
+Context.PLAN_SLOTS = PLAN_SLOTS
+Context.PLAN_DESCRIPTIONS = PLAN_DESCRIPTIONS
 Context.STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY
+Context.TAX_NOTICES = TAX_NOTICES
+Context.TERRITORIES = TERRITORIES
 
 Context.current_year = staticmethod(current_year)
 Context.get_site_sponsors = staticmethod(get_site_sponsors)
 Context.get_sponsor_image_url = staticmethod(get_sponsor_image_url)
+Context.get_territory = get_territory
 Context.linkify_github_bio = staticmethod(linkify_github_bio)
 Context.linkify_twitter_bio = staticmethod(linkify_twitter_bio)
 Context.log = log
@@ -228,8 +242,24 @@ def get_local(ident, force=False):
 # Local Cache Generator Functions
 # -----------------------------------------------------------------------------
 
-def get_raised_totals():
-    pass
+def get_fxrates():
+    rates = get_cache('fxrates')
+    if not rates:
+        rates = ExchangeRates.get_by_key_name('latest').data
+        set_cache('fxrates', rates, 300)
+    return decode_json(rates, parse_float=Decimal)['rates']
+
+BasicPrice = namedtuple('BasicPrice', ['plans', 'tax_regime'])
+
+DetailedPrice = namedtuple(
+    'DetailedPrice', ['base', 'taxes', 'totals', 'tax_regime', 'tax_rate']
+)
+
+PricingInfo = namedtuple(
+    'PricingInfo', [
+        'basic', 'basic_js', 'detailed', 'detailed_js', 'territory2tax'
+    ]
+)
 
 def get_pricing_info():
     basic = {}
@@ -260,10 +290,10 @@ def get_pricing_info():
             else:
                 total = price
             if int(total) == total:
-                price_str = fmt.format(price)
+                price_str = fmt.format(price.quantize(ZERO_DECIMAL_PLACES))
                 if tax:
-                    tax_amount_str = fmt.format(tax_amount)
-                total_str = fmt.format(total)
+                    tax_amount_str = fmt.format(tax_amount.quantize(ZERO_DECIMAL_PLACES))
+                total_str = fmt.format(total.quantize(ZERO_DECIMAL_PLACES))
             elif currency in ZERO_DECIMAL_CURRENCIES:
                 raise ValueError(
                     "Got value with decimals when calculating price and taxes for %s"
@@ -275,7 +305,7 @@ def get_pricing_info():
                 tax_amount_str = fmt.format(tax_amount, True)
                 total = total.quantize(TWO_DECIMAL_PLACES, rounding=ROUND_HALF_UP)
                 total_str = fmt.format(total, True)
-            if territory in DISPLAY_WITH_TAX:
+            if tax_regime in DISPLAY_WITH_TAX:
                 display.append(total_str)
             else:
                 display.append(price_str)
@@ -287,12 +317,41 @@ def get_pricing_info():
         detailed[territory] = DetailedPrice(
             tuple(prices), tuple(taxes), tuple(totals), tax_regime, tax_rate
             )
-    js_basic = ';'.join([
+    basic_js = ';'.join([
         'TAX_NOTICES=%s' % minjson(TAX_NOTICES),
         gen_js_territory_data('BASIC_PRICES', basic)
     ])
-    js_detailed = gen_js_territory_data('DETAILED_PRICES', detailed)
-    return basic, js_basic, detailed, js_detailed, territory2tax
+    detailed_js = gen_js_territory_data('DETAILED_PRICES', detailed)
+    return PricingInfo(basic, basic_js, detailed, detailed_js, territory2tax)
+
+RaisedTotals = namedtuple(
+    'RaisedTotals', [
+        'percentage', 'sponsor_count', 'goals'
+    ]
+)
+
+def get_raised_totals():
+    rates = get_local('fxrates')
+    fund_total = 0
+    goals = []
+    for goal in CAMPAIGN_GOALS:
+        if fund_total >= goal.percentage:
+            goals.append((goal.percentage, goal.description, True))
+        else:
+            goals.append((goal.percentage, goal.description, False))
+            break
+    return RaisedTotals(
+        0, 0, goals
+    )
+    totals = SponsorTotals.get_or_insert('gitfund')
+    amounts, plans = totals.get_data()
+    # plans = [(plan, plan_totals.get(plan.id, 0)) for plan in CAMPAIGN_PLANS]
+    percentage = 0
+    return RaisedTotals(
+        percentage,
+    )
+
+SocialProfiles = namedtuple('SocialProfiles', ['github', 'repo', 'twitter'])
 
 def get_social_profiles():
     cache = get_cache_multi(SOCIAL_MEMCACHE_KEYS)
@@ -337,7 +396,7 @@ def get_social_profiles():
                     % (resp, idx, entity)
                     )
         set_cache_multi(entries, 300)
-    return github, repo, twitter
+    return SocialProfiles(github, repo, twitter)
 
 def get_sponsors():
     sponsors = get_cache('sponsors')
@@ -628,15 +687,10 @@ def write_file(path, data):
 # Finance-related Utilities
 # -----------------------------------------------------------------------------
 
+ZERO_DECIMAL_PLACES = Decimal('1')
 TWO_DECIMAL_PLACES = Decimal('0.01')
 FOUR_DECIMAL_PLACES = Decimal('0.0001')
 PLAN_PORTIONS = {}
-
-BasicPrice = namedtuple('BasicPrice', ['plans', 'tax_regime'])
-
-DetailedPrice = namedtuple(
-    'DetailedPrice', ['base', 'taxes', 'totals', 'tax_regime', 'tax_rate']
-)
 
 def gen_js_territory_data(varname, dataset):
     idx = 0
@@ -658,6 +712,21 @@ def get_stripe_plan(currency, plan):
         plan, currency.lower(), len(BASE_PRICES[currency])
     )
 
+def get_totals_and_record(user):
+    user_id = str(user.key().id())
+    totals_key = create_key('ST', 'gitfund')
+    record_key = create_key('SR', user_id, parent=totals_key)
+    totals, record = db.get([totals_key, record_key])
+    if not totals:
+        totals = SponsorTotals(key_name='gitfund')
+    return user_id, totals, record
+
+def handle_totals_sync(user, plan, amount, currency):
+    if run_in_transaction(sync_totals(user, amount, currency)):
+        return
+    reset_sponsor(user)
+    return "Sorry, there aren't any %s slots remaining." % plan.title()
+
 def init_plan_info():
     total = 0
     totals = {}
@@ -672,6 +741,70 @@ def init_plan_info():
     check *= 100
     if check != 100:
         raise ValueError("Plan portions do not tally to 100%%: %s%%" % check)
+
+def remove_from_totals(user):
+    _, totals, record = get_totals_and_record(user)
+    if not record:
+        return
+    amounts, plans = totals.get_data()
+    plans[record.plan] -= 1
+    amounts[record.currency] -= record.amount
+    totals.set_data(amounts, plans)
+    totals.put()
+    db.delete(record)
+
+def reset_sponsor_user(user):
+    if user.stripe_needs_updating:
+        return
+    user.delinquent = False
+    user.delinquent_email = False
+    user.plan = ''
+    user.sponsor = False
+    user.sponsorship_started = None
+    user.totals_synced = False
+    if user.stripe_subscription:
+        user.stripe_needs_updating = True
+    return True
+
+def sync_totals(user, amount, currency):
+    user_id, totals, record = get_totals_and_record(user)
+    amounts, plans = totals.get_data()
+    if record:
+        amounts[record.currency] -= record.amount
+        plans[record.plan] -= 1
+    else:
+        record = SponsorRecord(key_name=user_id, parent=totals)
+    plan = user.plan
+    record.amount = amount
+    record.currency = currency
+    record.plan = plan
+    if plan in plans:
+        if plans[plan] == PLAN_SLOTS[plan]:
+            return
+        plans[plan] += 1
+    else:
+        plans[plan] = 1
+    if currency in amounts:
+        amounts[currency] += amount
+    else:
+        amounts[currency] = amount
+    totals.set_data(amounts, plans)
+    db.put([totals, record])
+    return True
+
+def terminate_sponsorship(user):
+    remove_from_totals(user)
+    if not run_in_transaction(reset_sponsor_user, user):
+        pass
+
+def update_stripe(user_id):
+    user = User.get_by_id(user_id)
+    if user.sponsor:
+        pass
+    elif not user.stripe_subscription:
+        return
+    else:
+        pass
 
 # -----------------------------------------------------------------------------
 # Other Utility Functions
@@ -709,45 +842,6 @@ def read(path):
 strptime = datetime.strptime
 
 # -----------------------------------------------------------------------------
-# Project Renderer
-# -----------------------------------------------------------------------------
-
-def render_project(ctx):
-    ctx.site_description = CAMPAIGN_DESCRIPTION
-    ctx.site_image = ctx.site_url + ctx.STATIC("gfx/cover.lossy.jpeg")
-    ctx.site_image_attribution = SIMG
-    ctx.site_title = CAMPAIGN_TITLE
-    github_profiles, github_repo, twitter_profiles = get_local('social.profiles')
-    total_sponsors, fund_total, plan_totals = get_totals()
-    goals = []
-    for goal in CAMPAIGN_GOALS:
-        if fund_total >= goal.percentage:
-            goals.append((goal.percentage, goal.description, True))
-        else:
-            goals.append((goal.percentage, goal.description, False))
-            break
-    # plans = [(plan, plan_totals.get(plan.id, 0)) for plan in CAMPAIGN_PLANS]
-    raised_percentage = 0
-    return dict(
-        campaign_content=CAMPAIGN_CONTENT,
-        campaign_description=CAMPAIGN_DESCRIPTION,
-        campaign_team=CAMPAIGN_TEAM,
-        campaign_title=CAMPAIGN_TITLE,
-        fund_total=fund_total,
-        github_profiles=github_profiles,
-        github_repo=github_repo,
-        goals=goals,
-        plan_slots=PLAN_SLOTS,
-        plan_descriptions=PLAN_DESCRIPTIONS,
-        raised_percentage=raised_percentage,
-        territories=TERRITORIES,
-        territory_exceptions=TERRITORY_EXCEPTIONS,
-        territory_selected='ES-CN',
-        total_sponsors=total_sponsors,
-        twitter_profiles=twitter_profiles,
-    )
-
-# -----------------------------------------------------------------------------
 # Handlers
 # -----------------------------------------------------------------------------
 
@@ -783,9 +877,62 @@ def auth(ctx, token=None, return_to=None):
     ctx.set_secure_cookie('auth', user_id)
     raise Redirect('/' + return_to)
 
+@handle
+def cron_update_stripe(ctx):
+    query = User.all(keys_only=True).filter(
+        'stripe_needs_updating =', True
+        ).filter('', datetime.utcnow() - 10)
+    for key in query:
+        update_stripe(key.id())
+
 @handle(['cancel.sponsorship', 'site'], anon=False)
-def cancel_sponsorship(ctx, confirm=None, xsrf=None):
+def cancel_sponsorship(ctx, xsrf=None):
     ctx.page_title = "Cancel Sponsorship"
+    user = ctx.user
+    if not user.sponsor:
+        return {
+            'error': "Sorry, no active sponsorships found for %s." % user.email
+        }
+    if xsrf is None:
+        return {
+            'sponsor': user
+        }
+    ctx.validate_xsrf(xsrf)
+    # handle case where .stripe_subscription is ''
+    err = cancel_stripe_subscription(user.key().id(), user.stripe_subscription)
+    if err:
+        return {'error': err}
+    return {'cancelled': True}
+
+def cancel_stripe_subscription(user_id, sub_id):
+    if not sub_id:
+        return
+    try:
+        sub = stripe.Subscription.retrieve(sub_id)
+    except Exception as e:
+        logging.error(
+            "Error retrieving Stripe subscription %s for %s: %r"
+            % (sub_id, user_id, e)
+            )
+        return "Sorry, there was an error accessing your sponsorship subscription. Please try again later."
+    if sub.status != 'canceled':
+        try:
+            sub.delete()
+        except Exception as e:
+            logging.error(
+                "Error cancelling Stripe subscription %s for %s: %r"
+                % (sub.id, user_id, e)
+                )
+            return "Sorry, there was an error cancelling your sponsorship. Please try again later."
+    def txn():
+        user = User.get_by_id(user_id)
+        if not user.sponsor:
+            if user.stripe_subscription and user.stripe_needs_updating:
+                user.stripe_needs_updating = False
+                user.stripe_subscription = ''
+                user.put()
+    run_in_transaction(txn)
+    delete_cache_multi(['raised.totals', 'sponsors'])
 
 @handle(['community', 'site'])
 def community(ctx, email=None, xsrf=''):
@@ -1010,6 +1157,12 @@ def site_sponsors(ctx, cursor=None):
 @handle(['sponsor.gitfund', 'site'])
 def sponsor_gitfund(ctx, plan='', name='', email='', card='', xsrf=None):
     ctx.page_title = "Sponsor GitFund!"
+    return {
+        'plan': plan,
+        'name': name,
+        'email': email,
+        'card': ''
+    }
 
 @handle
 def sponsor_image(ctx, id, height=None):
@@ -1049,8 +1202,18 @@ def stripe_webhook(ctx, token, **kwargs):
 def tav(ctx, project='', **kwargs):
     if project != 'gitfund':
         raise NotFound
+    # TODO(tav): Remove preview_mode when GitFund is about to be announced.
     ctx.preview_mode = True
-    return render_project(ctx)
+    ctx.site_description = CAMPAIGN_DESCRIPTION
+    ctx.site_image = ctx.site_url + ctx.STATIC("gfx/cover.lossy.jpeg")
+    ctx.site_image_attribution = SIMG
+    ctx.site_title = CAMPAIGN_TITLE
+    return dict(
+        pricing=get_local('pricing.info'),
+        totals=get_local('raised.totals'),
+        social=get_local('social.profiles'),
+        user_territory=ctx.get_territory(),
+    )
 
 @handle(['update.billing.details', 'site'], anon=False)
 def update_billing_details(ctx, plan='', name='', card='', xsrf=None):
@@ -1213,13 +1376,14 @@ if not LIVE:
 # Init Local State
 # ------------------------------------------------------------------------------
 
-CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md'))
+Context.CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md'))
 
 def init_state():
 
     # Decrease the pricing.info duration when tax rates are about to change.
     for ident, duration, generator in [
-        ('raised.totals', 60, get_raised_totals),
+        ('fxrates', 300, get_fxrates),
+        ('raised.totals', 1, get_raised_totals),
         ('pricing.info', 86400, get_pricing_info),
         ('social.profiles', 300, get_social_profiles),
         ('sponsors', 60, get_sponsors),
