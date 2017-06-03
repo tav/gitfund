@@ -1,12 +1,28 @@
+### TL;DR
+
+Things you can do:
+
+* Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 265 sponsors to make this real!
+
+* Share and upvote this on social media.
+
+* [Join the community](/community) on Slack/IRC.
+
+* [Leave a comment](#disqus_thread) — especially if you would like your project to be part of the launch.
+
+Thanks!
+
 ### Why GitFund?
 
 Open source is everywhere. From healthcare to education, scrappy startups to billion dollar giants, much of the software that runs our society is built using open source tools.
 
 But despite playing such a vital role, many open source projects, and even [supporting infrastructure][underfunded-infrastructure], are terribly under-resourced. And things have only gotten worse in recent years, e.g.
 
-* As software eats more and more of the world, and the use of open source increases with it, it places ever increasing demands on the time of project maintainers. Even for mature projects like redis, the number of opened issues trebled between 2011 and 2016.
-* As more and more open source developers start settling down and having families, there are greater demands on their time, e.g. spending time with kids, needing financial stability, &c. This leaves precious little free time for the [hard work][being-a-maintainer] of being an open source maintainer.
-* Despite more people using open source today, there are proportionately fewer people contributing back. Everyone assumes that someone else is doing it — leading to a classic [tragedy of the commons][tragedy-of-the-commons].
+* As software eats the world, and the use of open source increases with it, it places ever increasing demands on the time of project maintainers.
+
+* As more developers start settling down and having families, there are greater demands on their time. This leaves precious little free time for the [hard work][being-a-maintainer] of being an open source maintainer.
+
+* Despite more people using open source today, there are proportionately fewer people contributing back. Everyone assumes that someone else is doing it.
 
 It shouldn't take a crisis for us to pay attention, like we've had to do with [OpenSSL][openssl], [NTP][ntp], [GnuPG][gnupg], [RubyGems][rubygems], &c. Our software systems are becoming way too critical for that.
 
@@ -19,10 +35,10 @@ GitFund is loosely based on the well-established event sponsorship model, i.e. G
 Each project, depending on its scale, defines the number of sponsorship tiers, the number of sponsorship slots per tier, and the amount that a sponsor has to contribute every month to secure that slot, e.g.
 
 | Sponsorship Tier | Number of Sponsors | Monthly Amount |
-| :--------------: | :----------------: | :------------: |
-|       Gold       |         3          |     $3,000     |
-|      Silver      |         10         |      $600      |
-|      Bronze      |        100         |      $30       |
+| :--------------- | :----------------- | :------------- |
+| Gold             | 3                  | $3,000         |
+| Silver           | 10                 | $600           |
+| Bronze           | 100                | $30            |
 
 Some of the key aspects that set GitFund apart from the likes of [Kickstarter][kickstarter] and [Indiegogo][indiegogo] are:
 
@@ -34,10 +50,11 @@ Some of the key aspects that set GitFund apart from the likes of [Kickstarter][k
 
   GitFund will not be charging a platform fee on the transactions made on the platform. It will not be making a profit on any of the other charges deducted from funds received from sponsors either:
 
-  * Charges by third parties for financial transactions, i.e. Stripe fees and bank transfer fees.
-  * A 4% holdback of all transactions that will be used to cover any [chargebacks][chargebacks] that occur, e.g. due to sponsors changing their mind, the unfortunate reality of online fraud, &c.
+  * Charges by third parties, e.g. Stripe fees, bank transfer fees, &c.
 
-    After being held back for 12 months, whatever is left, including any interest accrued, will then be redistributed back to the projects in proportion to how much was taken from them.
+  * A 4% reserve that will be used to cover any [chargebacks][chargebacks] that occur, e.g. due to sponsors changing their mind, the unfortunate reality of online fraud, &c.
+
+    After being held back for 90 days, whatever is left will be redistributed back to the projects in proportion to how much was taken from them.
 
 * **Targets Organizations**
 
@@ -57,7 +74,7 @@ Some of the key aspects that set GitFund apart from the likes of [Kickstarter][k
 
 GitFund sets out to provide tangible benefits to project sponsors so as to make it easy for individuals to convince their organizations on the value of sponsoring specific projects:
 
-* **Visibility**
+* **Brand Visibility**
 
   By raising funds through GitFund, each project will be committing to embed a "Sponsored By" widget on their project README file and on the project documentation site (if one exists) — giving visibility to their sponsors.
 
@@ -71,7 +88,7 @@ GitFund sets out to provide tangible benefits to project sponsors so as to make 
 
 * **Sponsors-Only Issue Tracker**
 
-  While sponsors won't have any control over the projects they are funding, they will have access to a Sponsors-only issue tracker on GitFund that will let them upvote issues — thus gently nudging the maintainers on what they consider to be important.
+  While sponsors won't have any control over the projects they are funding, they will have access to a Sponsors-only issue tracker on GitFund with support for upvoting issues — thus gently nudging the maintainers on what they consider to be important.
 
 * **Sponsor Page**
 
@@ -80,7 +97,6 @@ GitFund sets out to provide tangible benefits to project sponsors so as to make 
 * **Exclusivity**
 
   Unlike the standard donations-based model, where anyone can give and have their name attached to a project, the GitFund model provides sponsors with relative exclusivity due to the limited number of sponsorship slots.
-
 
 * **Hassle Free**
 
@@ -92,11 +108,11 @@ And, of course, sponsors will benefit from the open source project itself! As lo
 
 We are using this basic version of GitFund to raise sponsorship to cover the costs of developing and running GitFund itself. As a sponsor, you will get the full list of benefits listed above when the site goes live.
 
-And thanks to the "Sponsored By" widget that will be included in the footer of this site, your sponsorship will be displayed across the whole of GitFund  — showing off just how awesome you are for making this [much needed infrastructure][ford-report] possible!
+And thanks to the "Sponsored By" widget included in the site's footer, your sponsorship will be displayed across the whole of GitFund  — showing off just how awesome you are for making this [much needed infrastructure][ford-report] possible!
 
 ### Timeline
 
-The initial version of GitFund will be ready for use by projects within 4-5 months of us hitting our base target. This period will be used to set up the various legal/regulatory requirements as well as to develop the site itself.
+The initial version of GitFund will be ready for use by projects within 4-5 months of us hitting our target. This period will be used to set up the various legal/regulatory requirements as well as to develop the site itself.
 
 The site will launch with an initial set of projects. If you'd like to be included as part of this launch set, please leave a supportive comment below with a brief description and a link to your project/repo.
 
@@ -124,13 +140,15 @@ Even with a super lean dev team, it still requires a decent chunk of cash to be 
 
 And then, of course, there's everything else that needs to be covered, e.g. accounting, community, design, dev, fraud ops, hosting, insurance, project management, security, sysadmin, testing, &c.
 
+<iframe id="budget" src="https://docs.google.com/spreadsheets/d/1LkfYKoxUmB3BmuCMPWUqH1iLqoozMxXWHGaJxcNWkzU/pubhtml?gid=0&amp;single=true&amp;widget=true&amp;headers=false" style="width: 100%; height: 605px; border: 0px"></iframe>
+
 ### Flow of Money
 
-The original idea behind GitFund was to use [Stripe Connect][connect] to collect funds directly into each project's Stripe account. But, from speaking to various projects, this wasn't ideal for a number of reasons:
+The original idea behind GitFund was to use [Stripe Connect][stripe-connect] to collect funds directly into each project's Stripe account. But, from speaking to various projects, this wasn't ideal for a number of reasons:
 
 * Each project would have to take on the burden of handling various taxes, e.g. the EU wants you to [charge/account for VAT][eu-vat] even if you only get 50 cents from a single sponsor in the EU.
 
-* Each project would have to manually handle paying out the funds to the various developers. Not all developers were comfortable with sharing their bank details with other developers.
+* Each project would have to manually handle paying out the funds to the various developers. Not all developers were comfortable with sharing their bank details with project maintainers.
 
 So, instead, the funds will be collected and distributed by GitFund directly as a sort of "sponsorship network" — similar to how [Google AdSense][adsense] collects money from advertisers and distributes it to publishers.
 
@@ -140,9 +158,9 @@ To elaborate:
 
 2. Each project's sponsorship money will then be credited to that project's fund on GitFund's internal system.
 
-3. Project maintainers can then approve transfers from the project's fund to themselves and/or others on their team using GitFund's internal system.
+3. Project maintainers can then approve transfers from the project's fund to themselves and/or others on the project team using GitFund's internal system.
 
-4. Money can then be withdrawn from the internal account it was transferred to, using one of the supported methods, e.g. bank transfer, PayPal, &c.
+4. Money can then be withdrawn from the internal account it was transferred to, using one of the supported methods, e.g. bank transfer, payout to debit card, &c.
 
 GitFund will handle the various regulatory requirements and taxes like VAT, so that developers will only have to account for the single UK-based income (where GitFund's legal entity is based) and any tax that may apply on that income.
 
@@ -150,7 +168,7 @@ GitFund will handle the various regulatory requirements and taxes like VAT, so t
 
 Due to both regulatory/compliance reasons and technical reasons like being able to do electronic bank transfers, we won't be able to support withdrawals from all territories from the very start.
 
-We will initially start with support for the UK, USA, and the Eurozone countries. And then gradually roll out support for all other territories — prioritizing [those that are supported by Stripe][stripe-global] and the [top Stack Overflow traffic sources][so-traffic].
+We will initially start with support for [the countries supported by Stripe][stripe-global]. And then gradually roll out support for all other territories — prioritizing [top Stack Overflow traffic sources][so-traffic].
 
 ### Fraud Prevention
 
@@ -158,7 +176,7 @@ We will be putting in place a number of controls to combat the inevitable fraud 
 
 * Doing manual reviews of projects before they are published to ensure that they are legit open source projects.
 
-* Using the social profiles of the project and team members to help determine the waiting period before funds can be transferred from the project account.
+* Using the social profiles of the project and team members to help determine the period that money is held (between 14-90 days) before it can be withdrawn.
 
 * Providing 2FA and audit logs so as to make authentication more secure.
 
@@ -170,13 +188,13 @@ Where possible, we will try to be as transparent as possible as to the reasons f
 
 Behaviour change takes time. GitHub noticeably changed how many of us collaborate in the open source community. But this didn't happen overnight. Similarly, it will take a while before GitFunding is established as a cultural norm.
 
-The introduction of money will no doubt add to the politics within certain projects. But we can try to learn from [the][openbsd] [larger][freebsd] [projects][linux] which have already had to deal with this, and hopefully, over time, some best practices will emerge.
+The introduction of money will no doubt add to the politics within certain projects. But we can try to learn from [the][openbsd] [larger][freebsd] [projects][linux] who have already had to deal with this, and hopefully, over time, some best practices will emerge.
 
 ### Finalising the Brand
 
 Coming up with a good name for a project is never easy. And although GitFund works well as name, it may potentially be in violation of the [Git trademark policy][git-tm], e.g. why the Gittip guys [changed their name][gittip-name-change] to Gratipay.
 
-It is our understanding that the Git trademark doesn't apply to us as we will be operating under a different [trademark class][tm-class]. But we'll need to speak to an IP lawyer to verify this, and have registered `sourcefund.io` as a fallback.
+It is our understanding that the Git trademark doesn't apply to us as we will be operating under a different [trademark class][tm-class]. But we'll need to speak to an IP lawyer to verify this.
 
 ### GitFund is Open Source
 
@@ -184,15 +202,15 @@ The code for GitFund is open source and developed in the open. You can star/fork
 
 * [github.com/tav/gitfund](https://github.com/tav/gitfund)
 
-This [MVP][mvp] runs on Python App Engine. The actual version will run using a minimal microservices framework with most services in Go, and Rust used for some things like [syntax highlighting][syntect].
+This [MVP][mvp] runs on Python App Engine. The actual version will run using a minimal services framework with most of the code in Go, and Rust used for some things like [syntax highlighting][syntect].
 
-While the app as a whole will not be of much use to anyone besides us and our users, some of the code should prove useful to others, e.g. interfacing with banks for direct payments, tools for handling taxes, compliance, &c.
+While the app as a whole will not be of much use to anyone besides us and our users, a lot of the code should prove useful to others, e.g. integrations with platforms like Stripe Connect, tools for handling taxes, compliance, &c.
 
 In addition to the code, we will also share our learnings related to financial regulations and compliance. By doing so, we hope to make life a little easier for others to innovate on finance-related startups.
 
 ### About Us
 
-We are the [Espians][espians], a small "remote-only" tech collective headquartered in London. We have been active members of the open source community since 1999 — starting with projects like Freenet, Jabber, LiteStep, Zope, &c.
+We are the [Espians][espians], a small "remote-first" tech collective headquartered in London. We have been active members of the open source community since 1999 — starting with projects like Freenet, Jabber, LiteStep, Zope, &c.
 
 We will initially be using Espians LLP, our existing legal entity, to operate GitFund. But once GitFund has been successfully running for a few years, we will separate it out into an independent non-profit.
 
@@ -204,21 +222,23 @@ If you know other amazing individuals who we can similarly learn from, please le
 
 ### Join the Community!
 
-If you are excited by GitFund, then please do join one of the two community channels. For those who prefer IRC, there's #esp on irc.freenode.net:
+If you are excited by GitFund, then please do join one of the two community channels. For those who prefer IRC, there's #esp on chat.freenode.net:
 
-* [irc.freenode.net/esp](irc://irc.freenode.net/esp)
+* [chat.freenode.net/esp](irc://chat.freenode.net/esp)
 
 And for those who prefer Slack, you can join via:
 
-* [gitfund.io/join.slack](https://gitfund.io/join.slack)
+* [gitfund.io/community](https://gitfund.io/community)
 
 Both channels are connected by a [relay bot][relay bot], so you won't be missing out on any discussions by choosing one over the other.
 
 ### Call to Action
 
-In closing, please [sponsor GitFund][sponsor] if you can, or get your company to sponsor GitFund. You will get lots of good karma and all of us in the open source community will be grateful for what you've made possible.
+In closing, [please sponsor GitFund][sponsor] if you can, or get your company to sponsor GitFund. You will get lots of good karma and all of us in the open source community will be grateful for what you've made possible.
 
-And do leave a comment if you like the idea of GitFund. It will be great to hear about any features you'd like to see, if you'd like to collaborate, or have your project be part of the launch. Thank you!
+And do leave a comment if you like the idea of GitFund. It will be great to hear about any features you'd like to see, if you'd like to collaborate, or have your project be part of the launch.
+
+— Cheers, tav
 
 [adsense]: https://www.google.co.uk/adsense/start/how-it-works/
 [asciicasts]: https://asciinema.org/
@@ -250,7 +270,8 @@ And do leave a comment if you like the idea of GitFund. It will be great to hear
 [relay bot]: https://github.com/tav/gitfund/tree/master/cmd/irc-slack
 [rubygems]: http://andre.arko.net/2016/09/26/a-year-of-ruby-together/
 [so-traffic]: https://www.quantcast.com/stackoverflow.com#/geographicCard
-[sponsor]: /sponsor
+[sponsor]: /sponsor.gitfund
+[stripe-connect]: https://stripe.com/connect
 [stripe-global]: https://stripe.com/global
 [syntect]: https://github.com/trishume/syntect
 [tm-class]: https://en.wikipedia.org/wiki/International_(Nice)_Classification_of_Goods_and_Services
