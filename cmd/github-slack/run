@@ -1,3 +1,0 @@
-#! /usr/bin/env bash
-
-go run bot.go ../../private/cmd/github-slack/config.yaml
