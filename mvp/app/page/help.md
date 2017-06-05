@@ -8,11 +8,59 @@ FAQ:
 
 ### How do I update my sponsorship details?
 
-You can update details via the [manage sponsorship page](/manage.sponsorship).
+You can update your details via the [manage sponsorship page](/manage.sponsorship).
+
+### Are my contributions tax-deductible?
+
+You should check with a tax professional in your country to be sure, but for
+most countries, the amount you contribute as part of your sponsorship will not
+be tax-deductible.
+
+### Why are you only charging in GBP?
+
+We've gone with just GBP for now as it is less work to support just a single
+currency. Once the Beta is ready, we will add support for multiple currencies so
+that most sponsors will be able to pay in their local currency.
+
+### Why are you not charging VAT yet?
+
+We are registered for VAT in the UK and the rest of the EU, and we will
+definitely be adding support for VAT and VAT-like taxes (GST, IVA, &c.) as part
+of the Beta.
+
+Unfortunately supporting VAT is not as simple as just adding a percentage to the
+amount charged and introduces a lot of complexity, e.g.
+
+* Having to account for currency exchange rates when the charged currency
+  differs from the national currency of the relevant territory.
+
+* Handling multiple rates within the same country.
+
+* Edge cases when rates change.
+
+* Producing and storing invoices appropriately.
+
+* Validating and storing proof that a user is from a specific country.
+
+So for this MVP, we've skipped on implementing VAT support by not providing any
+benefit in kind for those within the EU VAT region. However, once our Beta is
+ready, we will reach out for VAT-related details from you before charging any
+additional VAT, if necessary.
+
+### Why can't EU sponsors edit their Sponsor Profile?
+
+We do not currently support sponsors within the EU VAT region editing their
+Sponsor Profile, as this would mean that we are providing a benefit in kind in
+exchange for their sponsorship, and will have to charge VAT.
+
+We will enable sponsors within the EU VAT region to edit their Sponsor Profile
+once the Beta is ready with full VAT support.
 
 ### How do I get invoices?
 
-You can find invoice PDFs on the [billing history page](/view.billing.history).
+We will only be adding support for invoices (including VAT invoices and credit
+notes) as part of our Beta. If you need invoices before then, please email
+team@gitfund.io and we will generate them manually for you.
 
 ### Why is my sponsor image showing my personal profile picture?
 
@@ -24,10 +72,10 @@ WordPress.
 You can override the default by uploading the appropriate sponsor image via the
 [update sponsor profile](/update.sponsor.profile) page.
 
-### What happens if you don't raise your base target?
+### What happens if you don't raise your target?
 
 Hopefully there will be enough interest in supporting the open source ecosystem
-for us to raise well beyond our base target.
+for us to raise our target.
 
 But if by the end of September 2017 we still haven't reached it, then, depending
 on the amount raised and our costs (especially with regards to legals and
@@ -55,7 +103,10 @@ sign in, we'll send you an email that contains a special authorised link.
 
 Given that open source is a global phenomena, we'll try as much as possible to
 eventually support every country out there. If we don't support a country, then
-it will be primarily due to one of two reasons:
+it will be primarily due to one of three reasons:
+
+* It's not supported by third-party payment processing services that we depend
+  on.
 
 * It's on an economic sanctions list of some kind.
 
