@@ -33,53 +33,22 @@ from stripe.error import InvalidRequestError
 sys.path.insert(0, join(gcloud_sdk, 'platform', 'google_appengine'))
 
 from config import STRIPE_SECRET_KEY
-from finance import BASE_PRICES, PLAN_FACTORS, ZERO_DECIMAL_CURRENCIES
+from minfin import PLAN_AMOUNTS
 
 stripe.api_key = STRIPE_SECRET_KEY
 
-print ">> Validating currencies ..."
-
-to_remove = set()
-plan_spec = sorted(PLAN_FACTORS.items(), key=lambda item: item[1])
-max_factor = plan_spec[-1][1]
-
-for currency in sorted(BASE_PRICES):
-    for base_price in BASE_PRICES[currency]:
-        if currency in ZERO_DECIMAL_CURRENCIES:
-            amount = base_price * max_factor
-        else:
-            amount = base_price * max_factor * 100
-        if amount >= 99999999:
-            to_remove.add(currency)
-
-if to_remove:
-    print "ERROR: Some amounts are greater than the max Stripe limit of 99999999"
-    for currency in sorted(to_remove):
-        print "ERROR: %s" % currency
-    sys.exit(1)
-else:
-    print '.. all currency amounts are valid!'
-
 print ">> Creating stripe plans ..."
 
-for currency in sorted(BASE_PRICES):
-    for idx, base_price in enumerate(BASE_PRICES[currency]):
-        version = idx + 1
-        for plan_id, factor in plan_spec:
-            id = "gitfund.%s.%s.v%s" % (plan_id, currency.lower(), version)
-            try:
-                plan = stripe.Plan.retrieve(id)
-            except InvalidRequestError:
-                if currency in ZERO_DECIMAL_CURRENCIES:
-                    amount = base_price * factor
-                else:
-                    amount = base_price * factor * 100
-                stripe.Plan.create(
-                    id=id,
-                    amount=amount,
-                    currency=currency,
-                    interval='month',
-                    name='GitFund %s (%s)' % (plan_id.title(), currency),
-                    statement_descriptor='GITFUND'
-                )
-                print ".. created:", id
+for plan_id, amount in sorted(PLAN_AMOUNTS.items(), key=lambda item: item[1]):
+    try:
+        plan = stripe.Plan.retrieve(plan_id)
+    except InvalidRequestError:
+        stripe.Plan.create(
+            id=plan_id,
+            amount=amount * 100,
+            currency='GBP',
+            interval='month',
+            name='GitFund Monthly %s Sponsorship' % plan_id.title(),
+            statement_descriptor='GITFUND'
+            )
+        print ".. created:", plan_id
