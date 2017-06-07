@@ -1,6 +1,6 @@
-We are strong believers in [FLOS systems]. That is, Free/Libre and Open Source
-systems. Our belief is publicly backed up by our actions — in that we release
-almost all of our work into the [Public Domain].
+We are strong believers in [FLO systems]. That is, Free/Libre/Open systems. Our
+belief is publicly backed up by our actions — in that we release almost all of
+our work into the [Public Domain].
 
 There are, however, circumstances in which we cannot always stick to our ideals
 and have to make some compromises — especially with regards to using certain
@@ -11,9 +11,8 @@ By documenting the various compromises that we are making, we hope to:
 1. Make both ourselves and the broader community more conscious of it so that we
    may be better placed to re-evaluate decisions as conditions change.
 
-2. Minimize arguments with those who are more principled than us. These
-   arguments tend to polarize communities into unnecessarily hardened positions.
-   We'd prefer to avoid that if we can.
+2. Acknowledge some of the valid concerns raised by those who are more principled
+   than us, even as we make various compromises for pragmatic reasons.
 
 ### Our Compromises
 
@@ -22,22 +21,8 @@ because we state our opinions to be a certain way doesn't mean that they have to
 be true for anyone else:
 
 * We use the term "open source" almost exclusively and in preference to "free
-  software", "libre software", or "FLOSS" for a number of reasons:
-
-  * We believe that the principles of freedom and open collaboration are just as
-    important to domains like music, hardware, and genomics, as it is to
-    software.
-
-    It is easy to apply "open source" to domains like these, whereas "free/libre
-    software" by its very definition is limited to just the realm of software.
-
-  * We believe that "open" is better at communicating the underlying values than
-    "free". Most people, unfortunately, confuse free as to be free of charge, as
-    opposed to freedom.
-
-  * We recognize the distinction made in articles like "[Why Open Source misses
-    the point of Free Software][misses-the-point]", but believe that, whether
-    rightly or wrongly, "open source" [won in terms of mindshare] years ago.
+  software" or "FLO", as open source is well-recognized and doesn't have the
+  confusion of the term "free".
 
 * We use [Amazon Route 53] and [DNS Made Easy] to handle our DNS. At our small
   scale, this is more cost effective than running our own DNS servers —
@@ -51,20 +36,16 @@ be true for anyone else:
   made against GitHub in that it is proprietary and encourages an unnecessary
   dependency on a centralized resource, but:
 
-  * They've done such a good job, that they are effectively synonymous with open
-    source. The vast majority of projects are already on there. And it makes
-    sense for us to be where the community is.
+  * The vast majority of projects are already on there. And it makes sense for
+    us to be where the community is.
 
   * The social graph on GitHub provides us with a very useful dataset that will
     help us combat potential fraud by assessing the relative reputation of
     individuals.
 
   * We prefer how they handle namespaces, i.e. with repos hanging off of users
-    and orgs. They've also done a great job of curating this namespace.
-
-  * In our opinion, they have yet to do anything that has been harmful to our
-    community. If anything, they've been one of the most positive things that
-    has happened in the last decade.
+    and orgs. They've done a great job of curating this namespace — saving us
+    the headache of having to do it.
 
 * We are temporarily using [Google Analytics] for website analytics. But given
   both its proprietary nature and privacy implications, will be replacing it
@@ -153,7 +134,7 @@ updated][revisions] on 2017-06-06.*
 [Compute Engine]: https://cloud.google.com/compute/
 [DNS Made Easy]: https://www.dnsmadeeasy.com/
 [Ethereum]: https://www.ethereum.org/
-[FLOS systems]: https://www.gnu.org/philosophy/floss-and-foss.en.html
+[FLO systems]: https://wiki.snowdrift.coop/about/free-libre-open
 [Fuchsia]: https://en.wikipedia.org/wiki/Google_Fuchsia
 [G Suite]: https://gsuite.google.com/
 [GitHub]: https://github.com/
