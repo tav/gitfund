@@ -1,16 +1,10 @@
 ### TL;DR
 
-Things you can do:
+* We are building a sustainable solution to the [problem of funding open source projects][ford-report].
 
-* Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 265 sponsors to make this real!
+* GitFund will make it easy for companies, who tend to be biggest beneficiaries of open source, to give back to the projects that they depend on.
 
-* Share and upvote this on social media.
-
-* [Join the community](/community) on Slack/IRC.
-
-* [Leave a comment](#disqus_thread) — especially if you would like your project to be part of the launch.
-
-Thanks!
+* Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 75 sponsors to make this real!
 
 ### Why GitFund?
 
@@ -44,17 +38,17 @@ Some of the key aspects that set GitFund apart from the likes of [Kickstarter][k
 
 * **Exclusively for Open Source**
 
-  GitFund is being built specifically for the open source community, e.g. deep integration with GitHub, syntax highlighting within Markdown, [embedding asciicasts][asciicasts], &c.
+  GitFund is being built specifically for the open source community, e.g. deep integration with GitHub, syntax highlighting within Markdown, [embedding asciicasts][asciicasts], integration with IRC/Slack, &c.
 
 * **0% Platform Fee**
 
-  GitFund will not be charging a platform fee on the transactions made on the platform. It will not be making a profit on any of the other charges deducted from funds received from sponsors either:
+  Unlike most crowdfunding platforms, which tend to charge a 5% platform fee on top of payment processing fees, GitFund will not be charging a platform fee on the transactions made on the platform.
 
-  * Charges by third parties, e.g. Stripe fees, bank transfer fees, &c.
+* **Support for Splitting Funds**
 
-  * A 4% reserve that will be used to cover any [chargebacks][chargebacks] that occur, e.g. due to sponsors changing their mind, the unfortunate reality of online fraud, &c.
+  The typical crowdfunding site expects projects to manually disburse the funds to individual collaborators. Given the distributed nature of open source projects, this is a lot of effort for most projects.
 
-    After being held back for 90 days, whatever is left will be redistributed back to the projects in proportion to how much was taken from them.
+  In contrast, GitFund will enable maintainers to transfer funds from the project to individual collaborators — who can then have it paid out straight into their bank account — all directly from the platform.
 
 * **Targets Organizations**
 
@@ -62,7 +56,7 @@ Some of the key aspects that set GitFund apart from the likes of [Kickstarter][k
 
   GitFund will provide these organizations with [tangible benefits][benefits] so as to incentivize them to become sponsors. And, by making the whole process fairly streamlined, GitFund will reduce the barrier that currently exists in funding open source projects.
 
-* **Global**
+* **Multi-Currency Support**
 
   Open source is a global endeavour. Both sponsors and project developers are likely to come from anywhere in the world. GitFund will support as much of this global community as possible by adding support for multiple currencies, international bank accounts for withdrawals, &c.
 
@@ -82,7 +76,7 @@ GitFund sets out to provide tangible benefits to project sponsors so as to make 
 
 * **Recruitment Ads**
 
-  Sponsors will be able to use their displayed text/link on the "Sponsored By" widget to not just point to their site, but also for placing job ads, e.g.  "We're looking for a Web Performance Engineer. Apply here!".
+  Sponsors will be able to use their displayed text/link on the "Sponsored By" widget to not just point to their site, but also for placing job ads, e.g. "We're looking for a Web Performance Engineers. Apply here!".
 
   What better place to recruit developers than on the documentation pages of the open source projects used by the company?
 
@@ -92,7 +86,7 @@ GitFund sets out to provide tangible benefits to project sponsors so as to make 
 
 * **Sponsor Page**
 
-  In the same way that companies like Microsoft gain kudos by having hundreds of projects and thousands of members on their [GitHub org page][microsoft-github-org], organizations will be able to show off their sponsorship of the open source ecosystem through a dedicated Sponsor Profile page.
+  In the same way that companies like Microsoft gain kudos by having hundreds of projects and thousands of members on their [GitHub org page][microsoft-github-org], organizations will be able to show off their sponsorship of the open source ecosystem through a dedicated Sponsor Page.
 
 * **Exclusivity**
 
@@ -112,9 +106,27 @@ And thanks to the "Sponsored By" widget included in the site's footer, your spon
 
 ### Timeline
 
-The initial version of GitFund will be ready for use by projects within 4-5 months of us hitting our target. This period will be used to set up the various legal/regulatory requirements as well as to develop the site itself.
+The initial Beta of GitFund will be ready for use by projects within 4-5 months of us hitting our target. This period will be used to set up the various legal/regulatory requirements as well as to develop the site itself.
 
-The site will launch with an initial set of projects. If you'd like to be included as part of this launch set, please leave a supportive comment below with a brief description and a link to your project/repo.
+The Beta will launch with an initial set of projects. If you'd like your project to be part of the Beta launch, then please leave a supportive comment below with a brief description and a link to your project/repo.
+
+### 0% Platform Fee
+
+Unlike most crowdfunding sites, we will not be charging a platform fee on GitFund. This is possible due to a number of reasons:
+
+* Since GitFund is not a venture-funded startup, we do not have to make a profit in order to keep investors happy.
+
+* We will hold back 10% that will be used as a reserve to cover:
+
+  * Any chargebacks across the whole platform, where we are not able to immediately recover the funds from the project where the chargeback occurred, i.e. due to the funds already being paid out.
+
+  * Any excess hosting costs above our allocated budget of £4.5k/month.
+
+  After 90 days, all unused amounts from the reserve will then be given back to the projects, in proportion to how much was taken from them.
+
+  By structuring it this way, we can ensure that as much of the money reaches the intended developers, while still minimising our exposure to the risk of high growth/chargebacks.
+
+Please note that while we won't be charging a platform fee, third-party payment processing fees will still apply, i.e. Stripe fees, bank transfer fees, &c.
 
 ### Operational Costs
 
@@ -136,11 +148,9 @@ Even with a super lean dev team, it still requires a decent chunk of cash to be 
 
 * **Chargeback Buffer**
 
-  In addition to the standard 4% holdback, we will need an additional buffer from GitFund's operational budget in order to cashflow chargebacks. This will be particularly important in the early days when there may not be enough cash from the 4% held back from projects.
+  In addition to the standard 10% holdback, we will need an additional buffer from GitFund's operational budget in order to cashflow chargebacks. This will be particularly important in the early days when there may not be enough cash from the 10% held back from projects.
 
 And then, of course, there's everything else that needs to be covered, e.g. accounting, community, design, dev, fraud ops, hosting, insurance, project management, security, sysadmin, testing, &c.
-
-<iframe id="budget" src="https://docs.google.com/spreadsheets/d/1LkfYKoxUmB3BmuCMPWUqH1iLqoozMxXWHGaJxcNWkzU/pubhtml?gid=0&amp;single=true&amp;widget=true&amp;headers=false" style="width: 100%; height: 605px; border: 0px"></iframe>
 
 ### Flow of Money
 
@@ -176,13 +186,13 @@ We will be putting in place a number of controls to combat the inevitable fraud 
 
 * Doing manual reviews of projects before they are published to ensure that they are legit open source projects.
 
-* Using the social profiles of the project and team members to help determine the period that money is held (between 14-90 days) before it can be withdrawn.
+* Using the social profiles of the project, sponsors, and team members to help determine the period that money is held (between 30-90 days) before it is be paid out.
 
 * Providing 2FA and audit logs so as to make authentication more secure.
 
 * Building on top of machine learning tools like [Stripe Radar][radar] to minimize and prevent credit card fraud, money laundering, &c.
 
-Where possible, we will try to be as transparent as possible as to the reasons for any waiting periods on funds so that project maintainers can know what to fix without having to guess.
+Where possible, we will try to be as transparent as possible as to the reasons for any holding periods on funds so that project maintainers can know if they can do anything to reduce it.
 
 ### Risks and Challenges
 
@@ -205,8 +215,6 @@ The code for GitFund is open source and developed in the open. You can star/fork
 This [MVP][mvp] runs on Python App Engine. The actual version will run using a minimal services framework with most of the code in Go, and Rust used for some things like [syntax highlighting][syntect].
 
 While the app as a whole will not be of much use to anyone besides us and our users, a lot of the code should prove useful to others, e.g. integrations with platforms like Stripe Connect, tools for handling taxes, compliance, &c.
-
-In addition to the code, we will also share our learnings related to financial regulations and compliance. By doing so, we hope to make life a little easier for others to innovate on finance-related startups.
 
 ### About Us
 
@@ -236,7 +244,7 @@ Both channels are connected by a [relay bot][relay bot], so you won't be missing
 
 In closing, [please sponsor GitFund][sponsor] if you can, or get your company to sponsor GitFund. You will get lots of good karma and all of us in the open source community will be grateful for what you've made possible.
 
-And do leave a comment if you like the idea of GitFund. It will be great to hear about any features you'd like to see, if you'd like to collaborate, or have your project be part of the launch.
+And do leave a comment if you like the idea of GitFund. It will be great to hear about any features you'd like to see, if you'd like to collaborate, or have your project be part of the Beta launch.
 
 — Cheers, tav
 
