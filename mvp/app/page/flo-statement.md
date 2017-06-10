@@ -12,7 +12,7 @@ By documenting the various compromises that we are making, we hope to:
    may be better placed to re-evaluate decisions as conditions change.
 
 2. Acknowledge some of the valid concerns raised by those who are more principled
-   than us, even as we make various compromises for pragmatic reasons.
+   than us — even as we make these compromises for pragmatic reasons.
 
 ### Our Compromises
 
@@ -21,8 +21,8 @@ because we state our opinions to be a certain way doesn't mean that they have to
 be true for anyone else:
 
 * We use the term "open source" almost exclusively and in preference to "free
-  software" or "FLO", as open source is well-recognized and doesn't have the
-  confusion of the term "free".
+  software" or even "FLO", as open source is well-recognized and doesn't have
+  the confusion of the term "free".
 
 * We use [Amazon Route 53] and [DNS Made Easy] to handle our DNS. At our small
   scale, this is more cost effective than running our own DNS servers —
@@ -41,11 +41,11 @@ be true for anyone else:
 
   * The social graph on GitHub provides us with a very useful dataset that will
     help us combat potential fraud by assessing the relative reputation of
-    individuals.
+    individuals and projects.
 
   * We prefer how they handle namespaces, i.e. with repos hanging off of users
-    and orgs. They've done a great job of curating this namespace — saving us
-    the headache of having to do it.
+    and orgs. They've even done a great job of curating this namespace — saving
+    us the headache of having to do it.
 
 * We are temporarily using [Google Analytics] for website analytics. But given
   both its proprietary nature and privacy implications, will be replacing it
@@ -109,7 +109,7 @@ be true for anyone else:
 
     And even if a suitable platform were to emerge in the future, it would still
     require a lot of work to satisfy the various regulations and interface with
-    the "legacy" financial institutions.
+    "legacy" financial institutions.
 
 ### Adapting to the Future
 
@@ -119,10 +119,10 @@ than harm.
 
 And, of course, as conditions change, e.g. as viable open source alternatives
 emerge to any of the proprietary systems we are using, we will re-evaluate our
-position and decide appropriately.
+positions and decide appropriately.
 
 *This document was inspired by a conversation with [Aaron Wolf], and was [last
-updated][revisions] on 2017-06-06.*
+updated][revisions] on 2017-06-10.*
 
 [Aaron Wolf]: https://github.com/wolftune
 [Amazon Route 53]: https://aws.amazon.com/route53/
@@ -142,7 +142,6 @@ updated][revisions] on 2017-06-06.*
 [iOS]: https://developer.apple.com/ios/
 [macOS]: https://developer.apple.com/macos/
 [Mailjet]: https://www.mailjet.com/
-[misses-the-point]: https://www.gnu.org/philosophy/open-source-misses-the-point.html
 [Opencoin]: https://opencoin.org/
 [proprietary javascript]: https://www.gnu.org/philosophy/javascript-trap.html
 [revisions]: https://github.com/tav/gitfund/commits/master/mvp/app/page/flos-statement.md
@@ -151,4 +150,3 @@ updated][revisions] on 2017-06-06.*
 [Stripe]: https://stripe.com/
 [Stripe.js]: https://stripe.com/docs/stripe.js
 [Windows]: https://www.microsoft.com/windows/
-[won in terms of mindshare]: https://trends.google.com/trends/explore?date=all&q=%22free%20software%22,%22open%20source%22
