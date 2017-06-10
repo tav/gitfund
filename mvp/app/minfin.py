@@ -49,10 +49,10 @@ EU_VAT_TERRITORIES = frozenset([
 ])
 
 PLAN_AMOUNTS = {
-    'bronze': 750,
-    'silver': 1500,
-    'gold': 3000,
-    'platinum': 6000
+    'bronze': 1200,
+    'silver': 2400,
+    'gold': 4800,
+    'platinum': 9600
 }
 
 PLAN_SLOTS = {
@@ -74,3 +74,7 @@ def _gen_plan_factors():
     return factors
 
 PLAN_FACTORS = _gen_plan_factors()
+
+if __name__ == '__main__':
+    for plan, amount in sorted(PLAN_AMOUNTS.items(), key=lambda x: x[1]):
+        print "%12s\t%s" % (plan, PLAN_SLOTS[plan] * amount)

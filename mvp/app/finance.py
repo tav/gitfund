@@ -8,13 +8,6 @@ from decimal import Decimal
 # Globals
 # -----------------------------------------------------------------------------
 
-PLAN_FACTORS = {
-    'bronze': 1,
-    'silver': 5,
-    'gold': 50,
-    'platinum': 100
-}
-
 PLAN_SLOTS = {
     'bronze': 500,
     'silver': 100,
@@ -28,6 +21,24 @@ ZERO_DECIMAL_CURRENCIES = frozenset([
     'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF',
     'VND', 'VUV', 'XAF', 'XOF', 'XPF'
 ])
+
+# -----------------------------------------------------------------------------
+# Derived Globals
+# -----------------------------------------------------------------------------
+
+def _gen_plan_factors():
+    factors = {}
+    num = float(PLAN_SLOTS['bronze'])
+    for plan, slots in PLAN_SLOTS.items():
+        factor = num / slots
+        factor_int = int(factor)
+        if factor != factor_int:
+            raise ValueError("Got decimal factor value for %s plans" % plan)
+        factors[plan] = factor_int
+    return factors
+
+
+PLAN_FACTORS = _gen_plan_factors()
 
 # -----------------------------------------------------------------------------
 # Plan Prices
