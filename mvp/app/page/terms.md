@@ -97,10 +97,9 @@ that you are sponsoring.
 
 ### Sponsor Profile
 
-If you are a sponsor outside of the EU VAT region, your sponsorship link text,
-link URL, and image (your "**Sponsor Profile**"), will be displayed at random as
-part of the "Sponsored By" widgets. Your Sponsor Profile must satisfy the
-following conditions:
+As a sponsor, your sponsorship link text, link URL, and image (your "**Sponsor
+Profile**"), will be displayed at random as part of the "Sponsored By" widgets.
+Your Sponsor Profile must satisfy the following conditions:
 
 * If you are sponsoring as an individual, then:
 
@@ -125,16 +124,6 @@ following conditions:
 
   * The image must be either your company logo or the logo of one of your
     products.
-
-If you are a sponsor within the EU VAT region:
-
-* Only your Sponsor Name, which must either be your name or pseudonym for
-  individuals, or the company name or the brand name of one of your products for
-  companies, will be displayed as part of the Sponsor Profile.
-
-* Once the Beta is ready, you will be able to enjoy the full Sponsor Profile as
-  enjoyed by others as soon as you update your VAT profile with any VAT-related
-  info that may be applicable.
 
 We may, at our sole discretion, cancel your sponsorship if for any reason we
 find your Sponsor Profile unsuitable for the type of community we are trying to
