@@ -4,6 +4,8 @@
 
 * GitFund will make it easy for companies, who tend to be biggest beneficiaries of open source, to give back to the projects that they depend on.
 
+* Unlike most crowdfunding sites, we will be charging 0% platform fee so that projects get as much of the money as possible.
+
 * Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 75 sponsors to make this real!
 
 ### Why GitFund?
@@ -186,7 +188,7 @@ We will be putting in place a number of controls to combat the inevitable fraud 
 
 * Doing manual reviews of projects before they are published to ensure that they are legit open source projects.
 
-* Using the social profiles of the project, sponsors, and team members to help determine the period that money is held (between 30-90 days) before it is be paid out.
+* Using the social profiles of the project, sponsors, and team members to help determine the period that money is held (between 30-90 days) before it is paid out.
 
 * Providing 2FA and audit logs so as to make authentication more secure.
 
