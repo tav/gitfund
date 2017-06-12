@@ -22,14 +22,11 @@ We've gone with just GBP for now as it is less work to support just a single
 currency. Once the Beta is ready, we will add support for multiple currencies so
 that most sponsors will be able to pay in their local currency.
 
-### Why are you not charging VAT yet?
+### Why do you require VAT ID for EU sponsors?
 
-We are registered for VAT in the UK and the rest of the EU, and we will
-definitely be adding support for VAT and VAT-like taxes (GST, IVA, &c.) as part
-of the Beta.
-
-Unfortunately supporting VAT is not as simple as just adding a percentage to the
-amount charged and introduces a lot of complexity, e.g.
+As a VAT registered company in the UK and the rest of the EU, we need to charge
+VAT. Unfortunately supporting VAT is not as simple as just adding a percentage
+to the amount charged and introduces a lot of complexity, e.g.
 
 * Having to account for currency exchange rates when the charged currency
   differs from the national currency of the relevant territory.
@@ -42,25 +39,18 @@ amount charged and introduces a lot of complexity, e.g.
 
 * Validating and storing proof that a user is from a specific country.
 
-So for this MVP, we've skipped on implementing VAT support by not providing any
-benefit in kind for those within the EU VAT region. However, once our Beta is
-ready, we will reach out for VAT-related details from you before charging any
-additional VAT, if necessary.
+So, for this MVP, we are only supporting business to business VAT, where the VAT
+is reverse charged and much simpler to handle. And thus why we can only have EU
+sponsors with a valid VAT ID at the moment.
 
-### Why can't EU sponsors edit their Sponsor Profile?
-
-We do not currently support sponsors within the EU VAT region editing their
-Sponsor Profile, as this would mean that we are providing a benefit in kind in
-exchange for their sponsorship, and will have to charge VAT.
-
-We will enable sponsors within the EU VAT region to edit their Sponsor Profile
-once the Beta is ready with full VAT support.
+Once the Beta is ready, this limitation will no longer apply as we will have
+full VAT support — including for countries outside the EU.
 
 ### How do I get invoices?
 
-We will only be adding support for invoices (including VAT invoices and credit
-notes) as part of our Beta. If you need invoices before then, please email
-team@gitfund.io and we will generate them manually for you.
+We will only be adding support for auto-generated invoices (including VAT
+invoices and credit notes) as part of our Beta. If you need invoices before
+then, please email team@gitfund.io and we will manually generate them for you.
 
 ### Why is my sponsor image showing my personal profile picture?
 
