@@ -284,3 +284,18 @@ def get_tax_spec(territory, now):
             break
         found = rate
     return found
+
+# -----------------------------------------------------------------------------
+# Minfin Generator
+# -----------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    print "TERRITORY2TAX = {"
+    now = datetime.utcnow()
+    for territory in sorted(TERRITORY2TAX):
+        spec = get_tax_spec(territory, now)
+        func = spec.normalize_id
+        if func:
+            func = func.__name__
+        print "  '%s': ['%s', %s]," % (territory, spec.id_prefix, func)
+    print "}"
