@@ -2,47 +2,12 @@
 # See the GitFund UNLICENSE file for details.
 
 from google.appengine.ext import db
+from hashlib import md5
+from json import dumps as encode_json, loads as decode_json
 
 # -----------------------------------------------------------------------------
 # Models
 # -----------------------------------------------------------------------------
-
-class BI(db.Model): # key=<incremented_id>, parent=<user>
-    v = db.IntegerProperty(default=0)
-    address = db.StringProperty(default='', indexed=False)
-    company_name = db.StringProperty(default='', indexed=False)
-    city = db.StringProperty(default='', indexed=False)
-    created = db.DateTimeProperty(auto_now_add=True)
-    country = db.StringProperty(default='', indexed=False)
-    postcode = db.StringProperty(default='', indexed=False)
-    sales_tax_id = db.StringProperty(default='', indexed=False)
-
-BillingInfo = BI
-
-class CP(db.Model): # key=<country_id>
-    v = db.IntegerProperty(default=0)
-    card_country = db.StringProperty(default='', indexed=False)
-    card_id = db.StringProperty(default='', indexed=False)
-    ip_address = db.StringProperty(default='', indexed=False)
-    ip_city = db.StringProperty(default='', indexed=False)
-    ip_country = db.StringProperty(default='', indexed=False)
-    ip_latlng = db.StringProperty(default='', indexed=False)
-    ip_region = db.StringProperty(default='', indexed=False)
-
-CountryProof = CP
-
-class CS(db.Model): # key=<cron_type_id>
-    v = db.IntegerProperty(default=0)
-    cursor = db.StringProperty(default='', indexed=False)
-
-CronStatus = CS
-
-class ER(db.Model): # key='latest'
-    v = db.IntegerProperty(default=0)
-    data = db.BlobProperty(default='')
-    updated = db.DateTimeProperty(auto_now=True)
-
-ExchangeRates = ER
 
 class GP(db.Model): # key=<github_username>
     v = db.IntegerProperty(default=0)
@@ -62,7 +27,7 @@ class GR(db.Model): # key=<repo_id>
 
 GitHubRepo = GR
 
-class L(db.Model): # key=<base32_encoded_email_lower>
+class L(db.Model): # key=e.<base32_encoded_email_lower>
     v = db.IntegerProperty(default=0)
     user_id = db.IntegerProperty(default=0)
 
@@ -75,13 +40,12 @@ class SE(db.Model): # key=<stripe_event_id>
     data = db.BlobProperty(default='')
     event_type = db.StringProperty(default='')
     livemode = db.BooleanProperty(default=False)
+    state = db.IntegerProperty(default=0)
 
 StripeEvent = SE
 
 class SR(db.Model): # key=<user_id>, parent=<ST:project_id>
     v = db.IntegerProperty(default=0)
-    amount = db.IntegerProperty(default=0)
-    currency = db.StringProperty(default='', indexed=False)
     plan = db.StringProperty(default='', indexed=False)
 
 SponsorRecord = SR
@@ -89,7 +53,14 @@ SponsorRecord = SR
 class ST(db.Model): # key=<project_id>
     v = db.IntegerProperty(default=0)
     plans = db.TextProperty(default='')
-    amounts = db.TextProperty(default='')
+
+    def get_plans(self):
+        if not self.plans:
+            return {'bronze': 0, 'silver': 0, 'gold': 0, 'platinum': 0}
+        return decode_json(self.plans)
+
+    def set_plans(self, plans):
+        self.plans = encode_json(plans)
 
 SponsorTotals = ST
 
@@ -105,25 +76,44 @@ class TP(db.Model): # key=<twitter_screen_name>
 
 TwitterProfile = TP
 
-class TR(db.Model): # key=<stripe_event_id>, parent=<U|user_id>
-    v = db.IntegerProperty(default=0)
-    created = db.DateTimeProperty(auto_now_add=True)
-    type = db.StringProperty(default='')   # 'invoice' | 'refund'
-
-TransactionRecord = TR
-
 class U(db.Model): # key=<auto>
     v = db.IntegerProperty(default=0)
-    billing = db.IntegerProperty(default=0, indexed=False)
     created = db.DateTimeProperty(auto_now_add=True)
     delinquent = db.BooleanProperty(default=False)
     delinquent_email = db.BooleanProperty(default=False)
     email = db.StringProperty(default='', indexed=False)
+    image_id = db.ByteStringProperty(default='', indexed=False)
+    link_text = db.StringProperty(default='', indexed=False)
+    link_url = db.StringProperty(default='', indexed=False)
     name = db.StringProperty(default='', indexed=False)
     plan = db.StringProperty(default='')
-    status = db.StringProperty(default='')                           # 'created' | 'active' | 'cancelled'
-    stripe_id = db.StringProperty(default='')                        # stripe customer id
+    sponsor = db.BooleanProperty(default=False)
+    sponsor_type = db.StringProperty(default='')                     # 'stripe' | 'manual'
+    sponsorship_started = db.DateTimeProperty()
+    stripe_customer_id = db.StringProperty(default='')
+    stripe_needs_updating = db.BooleanProperty(default=False)
     stripe_subscription = db.StringProperty(default='')              # stripe subscription id
+    tax_id = db.StringProperty(default='')
+    territory = db.StringProperty(default='')
+    totals_synced = db.BooleanProperty(default=False)
     updated = db.DateTimeProperty(auto_now=True)
+
+    # A tuple with the first indicating the type of image available:
+    #
+    # 'b' - blob stored in gcs
+    # 'g' - md5 hash of the email for use with gravatar
+    # 'u' - direct url of image
+    def get_image_spec(self):
+        if self.image_id:
+            return ('b', self.image_id)
+        return ('g', md5(self.email.lower()).hexdigest())
+
+    def get_link_text(self):
+        if self.link_text:
+            return self.link_text
+        return self.name
+
+    def get_link_url(self):
+        return self.link_url
 
 User = U
