@@ -32,23 +32,44 @@ from stripe.error import InvalidRequestError
 
 sys.path.insert(0, join(gcloud_sdk, 'platform', 'google_appengine'))
 
-from config import STRIPE_SECRET_KEY
-from minfin import PLAN_AMOUNTS
+if sys.argv[1:] and sys.argv[1] == '--live':
+    environ['SERVER_SOFTWARE'] = 'Google'
+    expect_live = True
+else:
+    expect_live = False
+
+from config import LIVE, STRIPE_SECRET_KEY
+from minfin import PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_VERSION
 
 stripe.api_key = STRIPE_SECRET_KEY
+version = 'v%d' % PLAN_VERSION
 
-print ">> Creating stripe plans ..."
+if expect_live and not LIVE:
+    print "ERROR: LIVE is set to False in config.py"
+    sys.exit(1)
 
-for plan_id, amount in sorted(PLAN_AMOUNTS.items(), key=lambda item: item[1]):
+def get_or_create(id, amount, name):
     try:
-        plan = stripe.Plan.retrieve(plan_id)
+        stripe.Plan.retrieve(id)
     except InvalidRequestError:
         stripe.Plan.create(
-            id=plan_id,
+            id=id,
             amount=amount * 100,
             currency='GBP',
             interval='month',
-            name='GitFund Monthly %s Sponsorship' % plan_id.title(),
+            name=name,
             statement_descriptor='GITFUND'
             )
-        print ".. created:", plan_id
+    print ".. created:", id
+
+print ">> Creating stripe plans ..."
+
+for plan, amount in sorted(PLAN_AMOUNTS.items(), key=lambda item: item[1]):
+    plan_id = '%s.%s' % (plan, version)
+    get_or_create(
+        plan_id, amount, '%s Sponsorship (%s)' % (plan.title(), version)
+        )
+    get_or_create(
+        plan_id + '.gb', PLAN_AMOUNTS_GB[plan],
+        '%s Sponsorship (%s, GB)' % (plan.title(), version)
+        )
