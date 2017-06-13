@@ -117,6 +117,9 @@ func getRepoURL(commit *github.RepositoryCommit) string {
 
 func ircBot() {
 
+	stage1 := make(chan struct{})
+	stage2 := make(chan struct{})
+
 	conn := irc.IRC(config.IRC.Nick, config.IRC.Nick)
 	conn.QuitMessage = config.IRC.QuitMsg
 	if config.IRC.TLS {
@@ -124,15 +127,34 @@ func ircBot() {
 		conn.UseTLS = true
 	}
 
-	joined := make(chan struct{})
 	conn.AddCallback("001", func(e *irc.Event) {
+		go func() {
+			<-stage1
+			for channel := range config.IRC.Channels {
+				conn.Join(channel)
+			}
+			stage2 <- struct{}{}
+		}()
 		if config.IRC.Auth.Type == "nickserv" {
 			conn.Privmsgf("nickserv", "identify %s %s", config.IRC.Nick, config.IRC.Auth.Password)
+			if conn.GetNick() != config.IRC.Nick {
+				conn.AddCallback("NOTICE", func(ev *irc.Event) {
+					if strings.ToLower(ev.Nick) != "nickserv" {
+						return
+					}
+					if !strings.Contains(ev.Arguments[1], "has been ghosted") {
+						return
+					}
+					conn.Nick(config.IRC.Nick)
+					stage1 <- struct{}{}
+				})
+				conn.Privmsgf("nickserv", "ghost %s %s", config.IRC.Nick, config.IRC.Auth.Password)
+			} else {
+				stage1 <- struct{}{}
+			}
+		} else {
+			stage1 <- struct{}{}
 		}
-		for channel := range config.IRC.Channels {
-			conn.Join(channel)
-		}
-		joined <- struct{}{}
 	})
 
 	err := conn.Connect(fmt.Sprintf("%s:%d", config.IRC.Server, config.IRC.Port))
@@ -145,7 +167,7 @@ func ircBot() {
 		conn.Quit()
 	})
 
-	<-joined
+	<-stage2
 	for event := range ircEvents {
 		commit := event.Commit
 		msg := commit.Message
