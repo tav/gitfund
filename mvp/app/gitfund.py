@@ -5,15 +5,15 @@
 
 import logging
 import re
+import xml.etree.ElementTree as ET
 
-from base64 import b32encode, b64encode, urlsafe_b64encode
+from base64 import b32encode, b64encode
 from cgi import escape
 from collections import namedtuple
-from datetime import datetime, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime
+from decimal import Decimal
 from hashlib import sha256
-from hmac import HMAC
-from json import dumps as encode_json, loads as decode_json
+from json import dumps as encode_json
 from random import choice
 from struct import pack
 from thread import allocate_lock
@@ -22,21 +22,19 @@ from time import time
 from urllib import urlencode
 
 from config import (
-    ADMIN_AUTH_KEY, CAMPAIGN_DESCRIPTION, CAMPAIGN_GOALS,  CAMPAIGN_TEAM,
-    CAMPAIGN_TITLE, CANONICAL_HOST, FANOUT_KEY, FANOUT_REALM, GCS_BUCKET,
-    GITHUB_ACCESS_TOKEN, GITHUB_CALLER_ID, GITHUB_CLIENT_ID,
-    GITHUB_CLIENT_SECRET, HMAC_KEY, LIVE, MAILJET_API_KEY, MAILJET_SECRET_KEY,
-    MAILJET_SENDER_EMAIL, MAILJET_SENDER_NAME, ON_GOOGLE,
-    OPEN_EXCHANGE_RATES_APP_ID, PAGES, PLAN_DESCRIPTIONS, SLACK_TOKEN,
+    ADMIN_AUTH_KEY, CAMPAIGN_DESCRIPTION, CAMPAIGN_GOAL,  CAMPAIGN_TEAM,
+    CAMPAIGN_TITLE, CANONICAL_HOST, GCS_BUCKET, GITHUB_ACCESS_TOKEN,
+    GITHUB_CALLER_ID, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, HMAC_KEY, LIVE,
+    MAILJET_API_KEY, MAILJET_SECRET_KEY, MAILJET_SENDER_EMAIL,
+    MAILJET_SENDER_NAME, ON_GOOGLE, PAGES, PLAN_DESCRIPTIONS, SLACK_TOKEN,
     STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_TOKEN,
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET, TWITTER_CONSUMER_KEY,
     TWITTER_CONSUMER_SECRET
     )
 
 from model import (
-    BillingInfo, CountryProof, CronStatus, ExchangeRates, GitHubProfile,
-    GitHubRepo, Login, SponsorRecord, SponsorTotals, StripeEvent,
-    TransactionRecord, TwitterProfile, User
+    GitHubProfile, GitHubRepo, Login, SponsorRecord, SponsorTotals, StripeEvent,
+    TwitterProfile, User
     )
 
 from weblite import (
@@ -46,12 +44,7 @@ from weblite import (
 import cloudstorage as gcs
 import stripe
 
-from currency import TERRITORY2CURRENCY
 from emoji import EMOJI_MAP, EMOJI_SHORTCODES
-from finance import (
-    BASE_PRICES, DISPLAY_WITH_TAX, PLAN_FACTORS, PLAN_SLOTS, TAX_NOTICES,
-    ZERO_DECIMAL_CURRENCIES, get_tax_spec
-    )
 
 from gfm import (
     AutolinkExtension, AutomailExtension, SpacedLinkExtension,
@@ -81,13 +74,16 @@ from markdown.extensions.smart_strong import SmartEmphasisExtension
 from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 from markdown.preprocessors import Preprocessor
+from minfin import (
+    PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_FACTORS, PLAN_SLOTS, TERRITORY2TAX
+    )
 
 from tavutil.crypto import (
     create_tamper_proof_string, secure_string_comparison,
     validate_tamper_proof_string
     )
 
-from territories import TERRITORIES, TERRITORY_EXCEPTIONS
+from territories import TERRITORIES, TERRITORY_CODES
 from twitter import Client as TwitterClient
 
 # -----------------------------------------------------------------------------
@@ -99,7 +95,6 @@ AUTH_HANDLERS = frozenset([
     'manage.sponsorship',
     'update.billing.details',
     'update.sponsor.profile',
-    'view.billing.history',
 ])
 
 CACHE_SPECS = {}
@@ -123,7 +118,7 @@ VALID_SPONSOR_IMAGE_CONTENT_TYPES = frozenset([
 # Gravatar URL
 # -----------------------------------------------------------------------------
 
-GRAVATAR_PREFIX = '//www.gravatar.com/avatar/'
+GRAVATAR_PREFIX = 'https://www.gravatar.com/avatar/'
 GRAVATAR_SUFFIX = '?d=https%3A%2F%2F' + CANONICAL_HOST + '%2Fprofile.png'
 
 # -----------------------------------------------------------------------------
@@ -133,6 +128,26 @@ GRAVATAR_SUFFIX = '?d=https%3A%2F%2F' + CANONICAL_HOST + '%2Fprofile.png'
 stripe.api_key = STRIPE_SECRET_KEY
 
 # -----------------------------------------------------------------------------
+# Plan Representation
+# -----------------------------------------------------------------------------
+
+def gen_plan_repr():
+    plans = {}
+    plans_gb = {}
+    for tier in ['bronze', 'silver', 'gold', 'platinum']:
+        title = tier.title()
+        amount = "{:,}".format(PLAN_AMOUNTS[tier])
+        amount_gb = "{:,}".format(PLAN_AMOUNTS_GB[tier])
+        plans[tier] = "%s &nbsp;·&nbsp; £%s/month" % (title, amount)
+        plans_gb[tier] = (
+            "%s &nbsp;·&nbsp; £%s/month (includes 20%% VAT)"
+            % (title, amount_gb)
+            )
+    return plans, plans_gb
+
+Context.PLANS, Context.PLANS_GB = gen_plan_repr()
+
+# -----------------------------------------------------------------------------
 # Context Extensions
 # -----------------------------------------------------------------------------
 
@@ -140,6 +155,27 @@ _marker = object()
 
 def current_year():
     return datetime.utcnow().year
+
+def gen_finance_js():
+    resp = ['TAX={']; out = resp.append
+    last = len(TERRITORY2TAX) - 1
+    for idx, territory in enumerate(TERRITORY2TAX):
+        key = territory.replace('-', '_')
+        out('%s:"%s"' % (key, TERRITORY2TAX[territory][0]))
+        if idx != last:
+            out(",")
+    out("};PLANS={")
+    for idx, (key, value) in enumerate(Context.PLANS.iteritems()):
+        out('%s:"%s"' % (key, value))
+        if idx != 3:
+            out(",")
+    out("};PLANS_GB={")
+    for idx, (key, value) in enumerate(Context.PLANS_GB.iteritems()):
+        out('%s:"%s"' % (key, value))
+        if idx != 3:
+            out(",")
+    out("};")
+    return ''.join(resp)
 
 def get_site_sponsors():
     sponsors = get_local('sponsors')
@@ -160,10 +196,11 @@ def get_sponsor_image_url(info, size=None):
         if size:
             return GRAVATAR_PREFIX + val + GRAVATAR_SUFFIX + '&s=' + size
         return GRAVATAR_PREFIX + val + GRAVATAR_SUFFIX
+    return val
 
 def get_territory(ctx, default='US'):
     territory = ctx.environ.get('HTTP_X_APPENGINE_COUNTRY')
-    if territory in TERRITORY2CURRENCY:
+    if territory in TERRITORY_CODES:
         return territory
     return default
 
@@ -187,12 +224,13 @@ def pluralise(label, count):
 Context.CAMPAIGN_DESCRIPTION = CAMPAIGN_DESCRIPTION
 Context.CAMPAIGN_TEAM = CAMPAIGN_TEAM
 Context.CAMPAIGN_TITLE = CAMPAIGN_TITLE
+Context.FINANCE_JS = gen_finance_js()
 Context.LIVE = LIVE
 Context.ON_GOOGLE = ON_GOOGLE
+Context.PLAN_AMOUNTS = PLAN_AMOUNTS
 Context.PLAN_SLOTS = PLAN_SLOTS
 Context.PLAN_DESCRIPTIONS = PLAN_DESCRIPTIONS
 Context.STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY
-Context.TAX_NOTICES = TAX_NOTICES
 Context.TERRITORIES = TERRITORIES
 
 Context.current_year = staticmethod(current_year)
@@ -206,7 +244,7 @@ Context.noindex = False
 Context.page_title = ''
 Context.preview_mode = False
 Context.pluralise = staticmethod(pluralise)
-Context.show_sponsors_footer = True
+Context.show_sponsors_footer = False
 Context.site_image = ''
 Context.site_description = ''
 Context.site_title = ''
@@ -242,114 +280,29 @@ def get_local(ident, force=False):
 # Local Cache Generator Functions
 # -----------------------------------------------------------------------------
 
-def get_fxrates():
-    rates = get_cache('fxrates')
-    if not rates:
-        rates = ExchangeRates.get_by_key_name('latest').data
-        set_cache('fxrates', rates, 300)
-    return decode_json(rates, parse_float=Decimal)['rates']
-
-BasicPrice = namedtuple('BasicPrice', ['plans', 'tax_regime'])
-
-DetailedPrice = namedtuple(
-    'DetailedPrice', ['base', 'taxes', 'totals', 'tax_regime', 'tax_rate']
+Totals = namedtuple(
+    'Totals', ['sponsors', 'raised', 'plans', 'percent', 'progress']
 )
 
-PricingInfo = namedtuple(
-    'PricingInfo', [
-        'basic', 'basic_js', 'detailed', 'detailed_js', 'territory2tax'
-    ]
-)
-
-def get_pricing_info():
-    basic = {}
-    detailed = {}
-    now = datetime.utcnow()
-    plan_factors = sorted(PLAN_FACTORS.items(), key=lambda item: item[1])
-    territory2tax = {}
-    for territory, fmt in TERRITORY2CURRENCY.iteritems():
-        currency = fmt.currency
-        base_price = BASE_PRICES[fmt.currency][-1]
-        tax = get_tax_spec(territory, now)
-        tax_rate = tax_regime = ''
-        if tax:
-            tax_rate = str(tax.rate)
-            tax_regime = tax.type
-            territory2tax[territory] = tax
+def get_totals():
+    plans = SponsorTotals.get_or_insert('gitfund').get_plans()
+    fraction = Decimal('0')
+    raised = sponsors = 0
+    for plan, slots in plans.iteritems():
+        fraction += slots * PLAN_FACTORS[plan]
+        raised += slots * PLAN_AMOUNTS[plan]
+        sponsors += slots
+    progress = ''
+    if not fraction:
+        percent = '0%'
+    else:
+        pct_int = int(fraction * 100)
+        if pct_int:
+            percent = '%d%%' % pct_int
+            progress = '%d%% raised!' % pct_int
         else:
-            territory2tax[territory] = None
-        display = []
-        prices = []
-        taxes = []
-        totals = []
-        for plan, factor in plan_factors:
-            price = Decimal(base_price * factor)
-            if tax:
-                tax_amount = price * (tax.rate / 100)
-                total = price + tax_amount
-            else:
-                total = price
-            if int(total) == total:
-                price_str = fmt.format(price.quantize(ZERO_DECIMAL_PLACES))
-                if tax:
-                    tax_amount_str = fmt.format(tax_amount.quantize(ZERO_DECIMAL_PLACES))
-                total_str = fmt.format(total.quantize(ZERO_DECIMAL_PLACES))
-            elif currency in ZERO_DECIMAL_CURRENCIES:
-                raise ValueError(
-                    "Got value with decimals when calculating price and taxes for %s"
-                    % currency
-                    )
-            else:
-                price_str = fmt.format(price.quantize(TWO_DECIMAL_PLACES), True)
-                tax_amount = tax_amount.quantize(TWO_DECIMAL_PLACES, rounding=ROUND_HALF_UP)
-                tax_amount_str = fmt.format(tax_amount, True)
-                total = total.quantize(TWO_DECIMAL_PLACES, rounding=ROUND_HALF_UP)
-                total_str = fmt.format(total, True)
-            if tax_regime in DISPLAY_WITH_TAX:
-                display.append(total_str)
-            else:
-                display.append(price_str)
-            prices.append(price_str)
-            if tax:
-                taxes.append(tax_amount_str)
-            totals.append(total_str)
-        basic[territory] = BasicPrice(tuple(display), tax_regime)
-        detailed[territory] = DetailedPrice(
-            tuple(prices), tuple(taxes), tuple(totals), tax_regime, tax_rate
-            )
-    basic_js = ';'.join([
-        'TAX_NOTICES=%s' % minjson(TAX_NOTICES),
-        gen_js_territory_data('BASIC_PRICES', basic)
-    ])
-    detailed_js = gen_js_territory_data('DETAILED_PRICES', detailed)
-    return PricingInfo(basic, basic_js, detailed, detailed_js, territory2tax)
-
-RaisedTotals = namedtuple(
-    'RaisedTotals', [
-        'percentage', 'sponsor_count', 'goals'
-    ]
-)
-
-def get_raised_totals():
-    rates = get_local('fxrates')
-    fund_total = 0
-    goals = []
-    for goal in CAMPAIGN_GOALS:
-        if fund_total >= goal.percentage:
-            goals.append((goal.percentage, goal.description, True))
-        else:
-            goals.append((goal.percentage, goal.description, False))
-            break
-    return RaisedTotals(
-        0, 0, goals
-    )
-    totals = SponsorTotals.get_or_insert('gitfund')
-    amounts, plans = totals.get_data()
-    # plans = [(plan, plan_totals.get(plan.id, 0)) for plan in CAMPAIGN_PLANS]
-    percentage = 0
-    return RaisedTotals(
-        percentage,
-    )
+            percent = '1%'
+    return Totals(sponsors, raised, plans, percent, progress)
 
 SocialProfiles = namedtuple('SocialProfiles', ['github', 'repo', 'twitter'])
 
@@ -410,11 +363,11 @@ def get_sponsors():
     }
     for sponsor in User.all().filter('sponsor =', True).order(
         'sponsorship_started'
-        ).run(batch_size=700):
+        ).run(batch_size=100):
         sponsors[sponsor.plan].append({
             'img': sponsor.get_image_spec(),
             'text': sponsor.get_link_text(),
-            'url': sponsor.link_url,
+            'url': sponsor.get_link_url(),
         })
     set_cache('sponsors', sponsors, 60)
     return sponsors
@@ -452,58 +405,6 @@ twitter = TwitterClient(
     TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
     )
-
-# -----------------------------------------------------------------------------
-# JWT Support
-# -----------------------------------------------------------------------------
-
-def jwt_encode(s):
-    return urlsafe_b64encode(s).rstrip('=')
-
-def get_sha256_jwt(issuer, secret, expiration=None):
-    # Header is the base64 of {"alg":"HS256","typ":"JWT"}
-    header = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
-    payload = {'iss': issuer}
-    if expiration:
-        payload['exp'] = int(time()) + expiration
-    payload = jwt_encode(minjson(payload))
-    signature = jwt_encode(HMAC(secret, header+'.'+payload, sha256).digest())
-    return header + '.' + payload + '.' + signature
-
-# -----------------------------------------------------------------------------
-# Fanout Support
-# -----------------------------------------------------------------------------
-
-FANOUT_API_URL = "https://api.fanout.io/realm/%s/publish/" % FANOUT_REALM
-
-def fanout_publish(channel, data):
-    if not ON_GOOGLE:
-        logging.info("Skipping publishing to %s: %r" % (channel, data))
-        return
-    auth = get_sha256_jwt(FANOUT_REALM, FANOUT_KEY, 3600)
-    headers = {
-        'Authorization': "Bearer %s" % auth,
-        'Content-Type': 'application/json'
-    }
-    payload = encode_json(
-        {"items": [{"channel": channel, "json-object": data}]}
-        )
-    try:
-        resp = urlfetch(
-            FANOUT_API_URL, payload, POST,
-            deadline=30, headers=headers, validate_certificate=True
-            )
-    except Exception as err:
-        logging.error(
-            'A Fanout error occurred when publishing to %s: %r' % (channel, err)
-            )
-        return err
-    if resp.status_code != 200:
-        logging.error(
-            'A Fanout error occurred when publishing to %s (status: %d)' % (
-                    channel, resp.status_code
-            ))
-        return resp
 
 # -----------------------------------------------------------------------------
 # Mailjet Extension
@@ -684,6 +585,91 @@ def write_file(path, data):
     f.close()
 
 # -----------------------------------------------------------------------------
+# VAT Validation
+# -----------------------------------------------------------------------------
+
+def parse_vat_id(vat_id):
+    vat_id = remove_invalid_vat_char('', vat_id.upper())
+    if not vat_id:
+        return
+    id_len = len(vat_id)
+    if (id_len < 4) or (id_len > 14):
+        return
+    country = vat_id[:2].upper()
+    vat_number = vat_id[2:]
+    if country not in TERRITORY2TAX:
+        return
+    handler = TERRITORY2TAX[country][1]
+    if handler:
+        vat_number = handler(vat_number)
+    return country, vat_number
+
+remove_invalid_vat_char = re.compile('[^A-Z0-9]+').sub
+
+INVALID_VAT_ID = "Invalid VAT ID."
+
+def validate_vat_id(vat_id, attempts, deadline=20):
+    parsed = parse_vat_id(vat_id)
+    if not parsed:
+        return INVALID_VAT_ID
+    payload = """<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:vies="urn:ec.europa.eu:taxud:vies:services:checkVat:types">
+  <soap:Body>
+    <vies:checkVat>
+      <vies:countryCode>%s</vies:countryCode>
+      <vies:vatNumber>%s</vies:vatNumber>
+    </vies:checkVat>
+  </soap:Body>
+</soap:Envelope>""" % parsed
+    headers = {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'SOAPAction': 'urn:ec.europa.eu:taxud:vies:services:checkVat/checkVat'
+    }
+    last_attempt = attempts - 1
+    for i in range(attempts):
+        try:
+            resp = urlfetch(
+                'http://ec.europa.eu/taxation_customs/vies/services/checkVatService',
+                payload, POST, headers=headers, deadline=deadline,
+                validate_certificate=True,
+                )
+            if resp.status_code == 200:
+                break
+        except Exception:
+            if i == last_attempt:
+                return "Unable to reach the VAT validation service. Please try again later."
+    def err(msg=''):
+        if not msg:
+            msg = "The VAT validation service is experiencing issues. Please try again later."
+        logging.error("%s\n\n%r" % (msg, resp.content))
+        return msg
+    root = ET.fromstring(resp.content)
+    body = root.find('{http://schemas.xmlsoap.org/soap/envelope/}Body')
+    if body is None:
+        return err()
+    fault = body.find('{http://schemas.xmlsoap.org/soap/envelope/}Fault')
+    if fault is not None:
+        fault = fault.find('faultstring').text
+        if fault == 'INVALID_INPUT':
+            return INVALID_VAT_ID
+        return err("Unable to validate VAT ID: %s. Please try again later." % fault)
+    vatResp = body.find('{urn:ec.europa.eu:taxud:vies:services:checkVat:types}checkVatResponse')
+    if vatResp is None:
+        return err()
+    valid = vatResp.find('{urn:ec.europa.eu:taxud:vies:services:checkVat:types}valid')
+    if valid is None:
+        return err()
+    if valid.text == 'false':
+        return INVALID_VAT_ID
+    info = {}
+    for child in vatResp:
+        key = child.tag.split('}')[1]
+        if key in ('valid', 'requestDate'):
+            continue
+        info[key] = child.text
+    return info
+
+# -----------------------------------------------------------------------------
 # Finance-related Utilities
 # -----------------------------------------------------------------------------
 
@@ -691,26 +677,6 @@ ZERO_DECIMAL_PLACES = Decimal('1')
 TWO_DECIMAL_PLACES = Decimal('0.01')
 FOUR_DECIMAL_PLACES = Decimal('0.0001')
 PLAN_PORTIONS = {}
-
-def gen_js_territory_data(varname, dataset):
-    idx = 0
-    data = []; append_data = data.append
-    output = []; out = output.append
-    seen = {}
-    for territory in sorted(dataset):
-        value = dataset[territory]
-        tcode = territory.lower().replace('-', '_')
-        if value not in seen:
-            append_data(encode_json(value))
-            seen[value] = idx
-            idx += 1
-        out("%s:%d" % (tcode, seen[value]))
-    return "%s={%s};%s_DATA=[%s]" % (varname, ','.join(output), varname, ','.join(data))
-
-def get_stripe_plan(currency, plan):
-    return 'gitfund.%s.%s.v%d' % (
-        plan, currency.lower(), len(BASE_PRICES[currency])
-    )
 
 def get_totals_and_record(user):
     user_id = str(user.key().id())
@@ -726,21 +692,6 @@ def handle_totals_sync(user, plan, amount, currency):
         return
     reset_sponsor(user)
     return "Sorry, there aren't any %s slots remaining." % plan.title()
-
-def init_plan_info():
-    total = 0
-    totals = {}
-    for plan, factor in PLAN_FACTORS.iteritems():
-        totals[plan] = plan_total = Decimal(PLAN_SLOTS[plan] * factor)
-        total += plan_total
-    check = 0
-    for plan, plan_total in totals.iteritems():
-        portion = plan_total / total
-        PLAN_PORTIONS[plan] = portion / PLAN_SLOTS[plan]
-        check += portion
-    check *= 100
-    if check != 100:
-        raise ValueError("Plan portions do not tally to 100%%: %s%%" % check)
 
 def remove_from_totals(user):
     _, totals, record = get_totals_and_record(user)
@@ -830,9 +781,6 @@ def get_user_from_email(email):
         return
     return User.get_by_id(login.user_id)
 
-def minjson(data):
-    return encode_json(data, separators=(',', ':'))
-
 def read(path):
     f = open(path, 'rb')
     data = f.read().decode('utf-8')
@@ -876,14 +824,6 @@ def auth(ctx, token=None, return_to=None):
         return "<h1>Sorry, this auth link has expired.</h1>"
     ctx.set_secure_cookie('auth', user_id)
     raise Redirect('/' + return_to)
-
-@handle
-def cron_update_stripe(ctx):
-    query = User.all(keys_only=True).filter(
-        'stripe_needs_updating =', True
-        ).filter('', datetime.utcnow() - 10)
-    for key in query:
-        update_stripe(key.id())
 
 @handle(['cancel.sponsorship', 'site'], anon=False)
 def cancel_sponsorship(ctx, xsrf=None):
@@ -937,6 +877,7 @@ def cancel_stripe_subscription(user_id, sub_id):
 @handle(['community', 'site'])
 def community(ctx, email=None, xsrf=''):
     ctx.page_title = "Slack/IRC Community"
+    ctx.show_sponsors_footer = True
     if email is None:
         return {}
     ctx.validate_xsrf(xsrf)
@@ -963,43 +904,6 @@ def community(ctx, email=None, xsrf=''):
     return {'sent': True}
 
 @handle
-def compare_currencies(ctx):
-    rates = decode_json(
-        ExchangeRates.get_by_key_name('latest').data, parse_float=Decimal
-        )['rates']
-    data = []
-    usd_value = BASE_PRICES['USD'][-1]
-    for currency in BASE_PRICES:
-        value = Decimal(BASE_PRICES[currency][-1])
-        current = rates[currency] * usd_value
-        ratio = (value / current).quantize(FOUR_DECIMAL_PLACES, ROUND_HALF_UP)
-        data.append((currency, ratio, int(current), value))
-    data = sorted(data, key=lambda row: row[1])
-    ctx.response_headers['Content-Type'] = 'text/plain'
-    return '\n'.join("%s\t\t%s\t\t%s\t\t%s" % row for row in data)
-
-@handle
-def cron_fxrates(ctx):
-    rates = ExchangeRates.get_or_insert('latest')
-    if rates.data and ((datetime.utcnow() - rates.updated) <= timedelta(hours=1)):
-        return
-    try:
-        resp = urlfetch(
-            'https://openexchangerates.org/api/latest.json?app_id=%s'
-            % OPEN_EXCHANGE_RATES_APP_ID
-            )
-        if resp.status_code != 200:
-            raise ValueError("Got unexpected response code: %d" % resp.status_code)
-        data = resp.content
-        decode_json(data, parse_float=Decimal)['rates']
-        rates.data = data
-        rates.put()
-        delete_cache('fxrates')
-    except Exception, err:
-        logging.exception("Couldn't fetch exchange rates: %s" % err)
-    return 'OK'
-
-@handle
 def cron_github(ctx):
     for username in GITHUB_PROFILES:
         profile = GitHubProfile.get_by_key_name(username)
@@ -1024,10 +928,6 @@ def cron_github(ctx):
     return 'OK'
 
 @handle
-def cron_invoices(ctx):
-    return 'OK'
-
-@handle
 def cron_sync(ctx, sync_all=False):
     return 'OK'
 
@@ -1047,9 +947,13 @@ def cron_twitter(ctx):
     delete_cache_multi(TWITTER_MEMCACHE_KEYS)
     return 'OK'
 
-@handle(anon=False)
-def invoice_pdf(ctx):
-    pass
+@handle
+def cron_update_stripe(ctx):
+    query = User.all(keys_only=True).filter(
+        'stripe_needs_updating =', True
+        ).filter('', datetime.utcnow() - 10)
+    for key in query:
+        update_stripe(key.id())
 
 @handle(['login', 'site'])
 def login(ctx, return_to='manage.sponsorship', email='', existing=False, xsrf=None):
@@ -1122,8 +1026,8 @@ def readme_image(ctx, plan=None, size='300'):
         ctx.response_headers['Cache-Control'] = 'public, max-age=30;'
         ctx.response_headers['Content-Type'] = ctype
         return data
-    gravatar_url = 'https:' + get_sponsor_image_url(sponsor, size)
-    resp = urlfetch(gravatar_url, validate_certificate=True)
+    url = get_sponsor_image_url(sponsor, size)
+    resp = urlfetch(url, validate_certificate=True)
     if resp.status_code != 200:
         raise NotFound
     ctype = resp.headers.get('Content-Type')
@@ -1135,6 +1039,7 @@ def readme_image(ctx, plan=None, size='300'):
 
 @handle(['page', 'site'])
 def site(ctx, page=None, cache={}):
+    ctx.show_sponsors_footer = True
     if page in cache:
         ctx.page_title = PAGES[page]
         return cache[page]
@@ -1149,19 +1054,22 @@ def site(ctx, page=None, cache={}):
 @handle(['site.sponsors', 'site'])
 def site_sponsors(ctx, cursor=None):
     ctx.page_title = "Our Sponsors"
-    ctx.show_sponsors_footer = False
     return {
         'sponsors': get_local('sponsors')
     }
 
 @handle(['sponsor.gitfund', 'site'])
-def sponsor_gitfund(ctx, plan='', name='', email='', card='', xsrf=None):
+def sponsor_gitfund(ctx, plan='', name='', email='', card='', tax_id='', xsrf=None):
     ctx.page_title = "Sponsor GitFund!"
+    ctx.stripe_js = True
+    if name:
+        ctx.log({"name": name, "plan": plan, "email": email, "tax_id": tax_id})
     return {
         'plan': plan,
         'name': name,
         'email': email,
-        'card': ''
+        'card': '',
+        'tax_id': tax_id,
     }
 
 @handle
@@ -1204,16 +1112,15 @@ def tav(ctx, project='', **kwargs):
         raise NotFound
     # TODO(tav): Remove preview_mode when GitFund is about to be announced.
     ctx.preview_mode = True
+    ctx.show_sponsors_footer = True
     ctx.site_description = CAMPAIGN_DESCRIPTION
     ctx.site_image = ctx.site_url + ctx.STATIC("gfx/cover.lossy.jpeg")
     ctx.site_image_attribution = SIMG
     ctx.site_title = CAMPAIGN_TITLE
-    return dict(
-        pricing=get_local('pricing.info'),
-        totals=get_local('raised.totals'),
-        social=get_local('social.profiles'),
-        user_territory=ctx.get_territory(),
-    )
+    return {
+        'social': get_local('social.profiles'),
+        'totals': get_local('totals'),
+    }
 
 @handle(['update.billing.details', 'site'], anon=False)
 def update_billing_details(ctx, plan='', name='', card='', xsrf=None):
@@ -1234,8 +1141,8 @@ def update_sponsor_profile(ctx, link_text='', link_url='', image=None, xsrf=None
             'link_url': link_url,
         }
     link_text = link_text.strip()
-    if link_text and len(link_text.encode('utf-8')) > 40:
-        return error("The link text must be less than 40 bytes long.")
+    if link_text and len(link_text.encode('utf-8')) > 60:
+        return error("The link text must be less than 60 bytes long.")
     link_url = link_url.strip()
     if link_url:
         if not (link_url.startswith('http://') or link_url.startswith('https://')):
@@ -1261,8 +1168,8 @@ def update_sponsor_profile(ctx, link_text='', link_url='', image=None, xsrf=None
         width, height = meta.width, meta.height
         if (width < 300) or (height < 150):
             return error("Sorry, the image must be at least 300px wide and 150px high.")
-        if (float(width) / height) > 4:
-            return error("Sorry, the width of the image cannot be more than 4 times its height.")
+        if (float(width) / height) > 3:
+            return error("Sorry, the width of the image cannot be more than 3 times its height.")
         image_id = b32encode(sha256(data).digest() + pack('d', time()))
         write_file('sponsor.image/' + image_id, data)
     def txn():
@@ -1309,13 +1216,20 @@ def users_list(ctx, cursor=None):
         'users': users,
     }
 
-@handle
-def validate_vat(ctx):
-    pass
-
-@handle(['view.billing.history', 'site'], anon=False)
-def view_billing_history(ctx):
-    site.page_title = "View Billing History"
+@handle(admin=True)
+def validate_vat(ctx, vat_id):
+    ctx.log({"vat_id": vat_id})
+    try:
+        resp = validate_vat_id(vat_id, 1, 1)
+    except Exception as err:
+        resp = "Unexpected error whilst validating. Please try again later."
+        logging.error(
+            "Unexpected error whilst validating VAT ID %r: %s" % (vat_id, err)
+            )
+    ctx.response_headers["Content-Type"] = "text/plain"
+    if isinstance(resp, basestring):
+        return "ERROR: " + resp
+    return encode_json(resp)
 
 # ------------------------------------------------------------------------------
 # Dev Handlers
@@ -1324,17 +1238,15 @@ def view_billing_history(ctx):
 if not LIVE:
 
     @handle(admin=True)
-    def login_as(ctx, email, plan='gold', name=None):
+    def login_as(ctx, email, country='GB', plan='gold', name=None):
+        # TODO(tav): Protect against XSRF.
         login_key = get_login_key_name(email)
         login = Login.get_or_insert(login_key)
         user_id = login.user_id
         if not user_id:
             if not name:
                 name = email.split('@')[0]
-            user = User(
-                email=email, name=name, plan=plan, sponsor=True,
-                sponsorship_started=datetime.utcnow()
-                )
+            user = User(email=email, name=name)
             user.put()
             def txn(user_id):
                 login = Login.get_by_key_name(login_key)
@@ -1344,12 +1256,20 @@ if not LIVE:
                 login.put()
                 return user_id
             user_id = run_in_transaction(txn, user.key().id())
+        def txn2(user_id):
+            user = User.get_by_id(user_id)
+            user.country = country
+            user.plan = plan
+            user.sponsor = True
+            user.sponsor_type = 'manual'
+            user.sponsorship_started = datetime.utcnow()
+            user.put()
+        run_in_transaction(txn2, user_id)
         ctx.set_secure_cookie('auth', str(user_id))
         raise Redirect('/manage.sponsorship')
 
     @handle(admin=True)
     def site_bootstrap(ctx):
-        cron_fxrates(ctx)
         cron_github(ctx)
         cron_twitter(ctx)
         return 'OK'
@@ -1362,9 +1282,8 @@ if not LIVE:
     @handle(admin=True)
     def site_wipe(ctx):
         for model in [
-            BillingInfo, CountryProof, CronStatus, ExchangeRates, GitHubProfile,
-            GitHubRepo, Login, SponsorRecord, SponsorTotals, StripeEvent,
-            TransactionRecord, TwitterProfile, User
+            GitHubProfile, GitHubRepo, Login, SponsorRecord, SponsorTotals,
+            StripeEvent, TwitterProfile, User
         ]:
             for entity in model.all():
                 db.delete(entity)
@@ -1377,16 +1296,14 @@ if not LIVE:
 # ------------------------------------------------------------------------------
 
 Context.CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md'))
+Context.CAMPAIGN_GOAL = render_markdown(CAMPAIGN_GOAL)
 
 def init_state():
 
-    # Decrease the pricing.info duration when tax rates are about to change.
     for ident, duration, generator in [
-        ('fxrates', 300, get_fxrates),
-        ('raised.totals', 1, get_raised_totals),
-        ('pricing.info', 86400, get_pricing_info),
         ('social.profiles', 300, get_social_profiles),
         ('sponsors', 60, get_sponsors),
+        ('totals', 60, get_totals),
     ]:
         CACHE_SPECS[ident] = CacheSpec(duration, generator)
 
@@ -1407,11 +1324,6 @@ def init_state():
 
     for plan, description in PLAN_DESCRIPTIONS.items():
         PLAN_DESCRIPTIONS[plan] = render_markdown(description.strip())
-
-    for goal in CAMPAIGN_GOALS:
-        goal.description = render_markdown(goal.description.strip())
-
-    init_plan_info()
 
 init_state()
 
