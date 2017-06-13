@@ -189,9 +189,6 @@ module.exports = (api) ->
         '&:hover':
           border: '1px dotted #dadada'
 
-    '.backers-page':
-      paddingTop: '20px'
-
     '.backing-plan-backers':
       color: '#a7b2b8'
       fontSize: '13px'
@@ -304,7 +301,6 @@ module.exports = (api) ->
         width: '100%'
 
     '.campaign-content':
-      padding: '0px 18px'
       '.full-bleed':
         lineHeight: '0px'
         marginLeft: '-18px'
@@ -414,6 +410,9 @@ module.exports = (api) ->
         padding: '15px 10px'
         '@media all and (max-width: 922px)':
           marginBottom: '0'
+      'input[type=file]':
+        border: '0px'
+        padding: '15px 0px 0px 0px'
       'input.field-cvc':
         width: '70px'
       'input.field-input':
@@ -544,6 +543,9 @@ module.exports = (api) ->
         outline: '0'
         '&:active':
           background: '#1fc863'
+      'input[type=file]':
+        border: '0px'
+        padding: '15px 0px'
       'input':
         border: '1px solid #ccc'
         display: 'block'
@@ -785,6 +787,16 @@ module.exports = (api) ->
         fontSize: '18px'
         lineHeight: '27px'
 
+    '.notice-sponsors':
+      padding: '20px 0 20px 0'
+      fontSize: '30px'
+      lineHeight: '42px'
+      marginBottom: '10px'
+      '@media all and (max-width: 600px)':
+        padding: '10px 0 10px 0'
+        fontSize: '21px'
+        lineHeight: '30px'
+
     '.pad-bottom':
       paddingBottom: '60px'
 
@@ -928,213 +940,257 @@ module.exports = (api) ->
       '.navlinks':
         display: 'block !important'
 
-    '.supporters-list':
-      borderCollapse: 'collapse'
-      borderSpacing: '0'
-      border: '1px solid #ececec'
-      margin: '30px 20px 30px 20px'
-      width: '100%'
-      maxWidth: '100%'
-      thead:
-        backgroundColor: '#f0f0f0'
-        color: '#000'
-        textAlign: 'left'
-      'th, td':
-        borderLeft: '1px solid #ececec'
-        borderWidth: '0 0 0 1px'
-        margin: '0'
-        padding: '20px 20px'
-      'td:first-child, th:first-child':
-        borderLeftWidth: '0'
-      'td.constrained-width':
-        width: '350px'
-        maxWidth: '350px'
+    '.sponsor-tier':
+      padding: '40px 0 30px 20px'
+      '@media all and (max-width: 600px)':
+        padding: '0px'
+      '.sponsor-profile':
+        float: 'left'
+        height: '210px'
+        margin: '0 20px 15px 0'
         overflow: 'hidden'
-        textOverflow: 'ellipsis'
-      span:
-        color: 'red'
-        position: 'relative'
-        top: '-0.5em'
-        fontSize: '80%'
+        textAlign: 'center'
+        width: '400px'
+        '@media all and (max-width: 600px)':
+          float: 'none'
+          height: 'auto'
+          margin: '30px auto'
+          overflow: 'visible'
+          padding: '0px'
+          width: '90%'
+        img:
+          height: '120px'
+          marginBottom: '10px'
+          '@media all and (max-width: 600px)':
+            height: '80px'
+            marginBottom: '10px'
+        '.sponsor-link':
+          a:
+            borderBottom: "1px dotted #{LINK_COLOUR}"
+            color: '#232d32'
+            paddingBottom: '4px'
+            textDecoration: 'none'
+            '&:hover':
+              borderBottom: "1px solid transparent"
 
-    '.syntax':
-      '.c':
-        color: '#919191' # Comment
-      '.cm':
-        color: '#919191' # Comment.Multiline
-      '.cp':
-        color: '#919191' # Comment.Preproc
-      '.cs':
-        color: '#919191' # Comment.Special
-      '.c1':
-        color: '#919191' # Comment.Single
-      '.err':
-        color: '#a61717'
-        backgroundColor: '#e3d2d2' # Error
-      '.g':
-        color: '#101010' # Generic
-      '.gd':
-        color: '#d22323' # Generic.Deleted
-      '.ge':
-        color: '#101010'
-        fontStyle: 'italic' # Generic.Emph
-      '.gh':
-        color: '#101010' # Generic.Heading
-      '.gi':
-        color: '#589819' # Generic.Inserted
-      '.go':
-        color: '#6a6a6a' # Generic.Output
-      '.gp':
-        color: '#bb8844' # Generic.Prompt
-      '.gr':
-        color: '#d22323' # Generic.Error
-      '.gs':
-        color: '#101010' # Generic.Strong
-      '.gt':
-        color: '#d22323' # Generic.Traceback
-      '.gu':
-        color: '#101010' # Generic.Subheading
-      '.k':
-        # color: '#c32528' # Keyword: (espian red)
-        color: '#ff5600' # Keyword (orangy)
-      '.kc':
-        color: '#ff5600' # Keyword.Constant
-      '.kd':
-        color: '#ff5600' # Keyword.Declaration
-      '.kd':
-        color: '#ff5600' # Keyword.Declaration
-      '.kn':
-        color: '#ff5600' # Keyword
-      '.kp':
-        color: '#ff5600' # Keyword.Pseudo
-      '.kr':
-        color: '#ff5600' # Keyword.Reserved
-      '.kt':
-        color: '#ff5600' # Keyword.Type
-      '.l':
-        color: '#101010' # Literal
-      '.ld':
-        color: '#101010' # Literal.Date
-      '.m':
-        # color: '#3677a9' # Literal.Number (darkish pastely blue)
-        # color: '#00a33f' # Literal.Number (brightish green)
-        # color: '#1550a2' # Literal.Number (darker blue)
-        color: '#5d90cd' # Literal.Number (pastely blue)
-      '.mf':
-        color: '#5d90cd' # Literal.Number.Float
-      '.mh':
-        color: '#5d90cd' # Literal.Number.Hex
-      '.mi':
-        color: '#5d90cd' # Literal.Number.Integer
-      '.il':
-        color: '#5d90cd' # Literal.Number.Integer.Long
-      '.mo':
-        color: '#5d90cd' # Literal.Number.Oct
-      '.bp':
-        color: '#a535ae' # Name.Builtin.Pseudo
-      '.n':
-        color: '#101010' # Name
-      '.na':
-        color: '#bbbbbb' # Name.Attribute
-      '.nb':
-        # color: '#bf78cc' # Name.Builtin (pastely purple)
-        # color: '#af956f' # Name.Builtin (pastely light brown)
-        color: '#a535ae' # Name.Builtin (brightish pastely purple)
-      '.nc':
-        color: '#101010' # Name.Class
-      '.nd':
-        color: '#6d8091' # Name.Decorator
-      '.ne':
-        color: '#af956f' # Name.Exception
-      '.nf':
-        # color: '#3677a9' # Name.Function
-        color: '#1550a2' # Name.Function
-      '.ni':
-        color: '#101010' # Name.Entity
-      '.nl':
-        color: '#101010' # Name.Label
-      '.nn':
-        # color: '#101010' # Name.Namespace
-        color: '#101010' # Name.Namespace
-      '.no':
-        color: '#101010' # Name.Constant
-      '.nx':
-        color: '#101010' # Name.Other
-      '.nt':
-        color: '#6d8091' # Name.Tag
-      '.nv':
-        color: '#101010' # Name.Variable
-      '.vc':
-        color: '#101010' # Name.Variable.Class
-      '.vg':
-        color: '#101010' # Name.Variable.Global
-      '.vi':
-        color: '#101010' # Name.Variable.Instance
-      '.py':
-        color: '#101010' # Name.Property
-      '.o':
-        color: '#ff5600' # Operator */ # orangy
-      '.o':
-        color: '#101010' # Operator
-      '.ow':
-        color: '#101010' # Operator.Word
-      '.p':
-        color: '#101010' # Punctuation
-      '.s':
-        # color: '#dd1144' # Literal.String (darkish red)
-        # color: '#c32528' # Literal.String (espian red)
-        # color: '#39946a' # Literal.String (pastely greeny)
-        # color: '#5d90cd' # Literal.String (pastely blue)
-        color: '#00a33f' # Literal.String (brightish green)
-      '.sb':
-        color: '#00a33f' # Literal.String.Backtick
-      '.sc':
-        color: '#00a33f' # Literal.String.Char
-      '.sd':
-        color: '#767676' # Literal.String.Doc
-      '.se':
-        color: '#00a33f' # Literal.String.Escape
-      '.sh':
-        color: '#00a33f' # Literal.String.Heredoc
-      '.si':
-        color: '#00a33f' # Literal.String.Interpol
-      '.sr':
-        color: '#00a33f' # Literal.String.Regex
-      '.ss':
-        color: '#00a33f' # Literal.String.Symbol
-      '.sx':
-        color: '#00a33f' # Literal.String.Other
-      '.s1':
-        color: '#00a33f' # Literal.String.Single
-      '.s2':
-        color: '#00a33f' # Literal.String.Double
-      '.w':
-        color: '#101010' # Text.Whitespace
-      '.x':
-        color: '#101010' # Other
+    '.sponsor-tier-heading':
+      background: '#ecf0f1'
+      display: 'inline-block'
+      padding: '8px 12px'
+      fontSize: '18px'
 
-    '.syntax.bash .nb':
-      color: '#101010'
-    '.syntax.bash .nv':
-      color: '#c32528'
-    '.syntax.css .k':
-      color: '#606060'
-    '.syntax.css .nc':
-      color: '#c32528'
-    '.syntax.css .nf':
-      color: '#c32528'
-    '.syntax.css .nt':
-      color: '#c32528'
-    '.syntax.rst .k':
-      color: '#5d90cd'
-    '.syntax.rst .ow':
-      color: '#5d90cd'
-    '.syntax.rst .p':
-      color: '#5d90cd'
-    '.syntax.yaml .l-Scalar-Plain':
-      color: '#5d90cd'
-    '.syntax.yaml .p-Indicator':
-      color: '#101010'
+    '.sponsored-by-heading':
+      background: '#ecf0f1'
+      h3:
+        fontSize: '12px'
+        lineHeight: '12px'
+        padding: '12px 0 10px 0'
+        margin: '0'
+
+    '.sponsored-by-profiles':
+      '.sponsor-profile':
+        float: 'left'
+        textAlign: 'center'
+        padding: '10px'
+        margin: '15px 15px 15px 0'
+        width: '320px'
+        height: '170px'
+        overflow: 'hidden'
+        '@media all and (max-width: 700px)':
+          width: '100%'
+          height: 'auto'
+          margin: '15px 0 5px 0'
+        img:
+          marginBottom: '15px'
+          height: '80px'
+          '@media all and (max-width: 700px)':
+            marginBottom: '10px'
+        '.sponsor-link':
+          a:
+            borderBottom: "1px dotted #{LINK_COLOUR}"
+            color: '#232d32'
+            paddingBottom: '4px'
+            '&:hover':
+              borderBottom: "1px solid transparent"
+
+    # '.syntax':
+    #   '.c':
+    #     color: '#919191' # Comment
+    #   '.cm':
+    #     color: '#919191' # Comment.Multiline
+    #   '.cp':
+    #     color: '#919191' # Comment.Preproc
+    #   '.cs':
+    #     color: '#919191' # Comment.Special
+    #   '.c1':
+    #     color: '#919191' # Comment.Single
+    #   '.err':
+    #     color: '#a61717'
+    #     backgroundColor: '#e3d2d2' # Error
+    #   '.g':
+    #     color: '#101010' # Generic
+    #   '.gd':
+    #     color: '#d22323' # Generic.Deleted
+    #   '.ge':
+    #     color: '#101010'
+    #     fontStyle: 'italic' # Generic.Emph
+    #   '.gh':
+    #     color: '#101010' # Generic.Heading
+    #   '.gi':
+    #     color: '#589819' # Generic.Inserted
+    #   '.go':
+    #     color: '#6a6a6a' # Generic.Output
+    #   '.gp':
+    #     color: '#bb8844' # Generic.Prompt
+    #   '.gr':
+    #     color: '#d22323' # Generic.Error
+    #   '.gs':
+    #     color: '#101010' # Generic.Strong
+    #   '.gt':
+    #     color: '#d22323' # Generic.Traceback
+    #   '.gu':
+    #     color: '#101010' # Generic.Subheading
+    #   '.k':
+    #     # color: '#c32528' # Keyword: (espian red)
+    #     color: '#ff5600' # Keyword (orangy)
+    #   '.kc':
+    #     color: '#ff5600' # Keyword.Constant
+    #   '.kd':
+    #     color: '#ff5600' # Keyword.Declaration
+    #   '.kd':
+    #     color: '#ff5600' # Keyword.Declaration
+    #   '.kn':
+    #     color: '#ff5600' # Keyword
+    #   '.kp':
+    #     color: '#ff5600' # Keyword.Pseudo
+    #   '.kr':
+    #     color: '#ff5600' # Keyword.Reserved
+    #   '.kt':
+    #     color: '#ff5600' # Keyword.Type
+    #   '.l':
+    #     color: '#101010' # Literal
+    #   '.ld':
+    #     color: '#101010' # Literal.Date
+    #   '.m':
+    #     # color: '#3677a9' # Literal.Number (darkish pastely blue)
+    #     # color: '#00a33f' # Literal.Number (brightish green)
+    #     # color: '#1550a2' # Literal.Number (darker blue)
+    #     color: '#5d90cd' # Literal.Number (pastely blue)
+    #   '.mf':
+    #     color: '#5d90cd' # Literal.Number.Float
+    #   '.mh':
+    #     color: '#5d90cd' # Literal.Number.Hex
+    #   '.mi':
+    #     color: '#5d90cd' # Literal.Number.Integer
+    #   '.il':
+    #     color: '#5d90cd' # Literal.Number.Integer.Long
+    #   '.mo':
+    #     color: '#5d90cd' # Literal.Number.Oct
+    #   '.bp':
+    #     color: '#a535ae' # Name.Builtin.Pseudo
+    #   '.n':
+    #     color: '#101010' # Name
+    #   '.na':
+    #     color: '#bbbbbb' # Name.Attribute
+    #   '.nb':
+    #     # color: '#bf78cc' # Name.Builtin (pastely purple)
+    #     # color: '#af956f' # Name.Builtin (pastely light brown)
+    #     color: '#a535ae' # Name.Builtin (brightish pastely purple)
+    #   '.nc':
+    #     color: '#101010' # Name.Class
+    #   '.nd':
+    #     color: '#6d8091' # Name.Decorator
+    #   '.ne':
+    #     color: '#af956f' # Name.Exception
+    #   '.nf':
+    #     # color: '#3677a9' # Name.Function
+    #     color: '#1550a2' # Name.Function
+    #   '.ni':
+    #     color: '#101010' # Name.Entity
+    #   '.nl':
+    #     color: '#101010' # Name.Label
+    #   '.nn':
+    #     # color: '#101010' # Name.Namespace
+    #     color: '#101010' # Name.Namespace
+    #   '.no':
+    #     color: '#101010' # Name.Constant
+    #   '.nx':
+    #     color: '#101010' # Name.Other
+    #   '.nt':
+    #     color: '#6d8091' # Name.Tag
+    #   '.nv':
+    #     color: '#101010' # Name.Variable
+    #   '.vc':
+    #     color: '#101010' # Name.Variable.Class
+    #   '.vg':
+    #     color: '#101010' # Name.Variable.Global
+    #   '.vi':
+    #     color: '#101010' # Name.Variable.Instance
+    #   '.py':
+    #     color: '#101010' # Name.Property
+    #   '.o':
+    #     color: '#ff5600' # Operator */ # orangy
+    #   '.o':
+    #     color: '#101010' # Operator
+    #   '.ow':
+    #     color: '#101010' # Operator.Word
+    #   '.p':
+    #     color: '#101010' # Punctuation
+    #   '.s':
+    #     # color: '#dd1144' # Literal.String (darkish red)
+    #     # color: '#c32528' # Literal.String (espian red)
+    #     # color: '#39946a' # Literal.String (pastely greeny)
+    #     # color: '#5d90cd' # Literal.String (pastely blue)
+    #     color: '#00a33f' # Literal.String (brightish green)
+    #   '.sb':
+    #     color: '#00a33f' # Literal.String.Backtick
+    #   '.sc':
+    #     color: '#00a33f' # Literal.String.Char
+    #   '.sd':
+    #     color: '#767676' # Literal.String.Doc
+    #   '.se':
+    #     color: '#00a33f' # Literal.String.Escape
+    #   '.sh':
+    #     color: '#00a33f' # Literal.String.Heredoc
+    #   '.si':
+    #     color: '#00a33f' # Literal.String.Interpol
+    #   '.sr':
+    #     color: '#00a33f' # Literal.String.Regex
+    #   '.ss':
+    #     color: '#00a33f' # Literal.String.Symbol
+    #   '.sx':
+    #     color: '#00a33f' # Literal.String.Other
+    #   '.s1':
+    #     color: '#00a33f' # Literal.String.Single
+    #   '.s2':
+    #     color: '#00a33f' # Literal.String.Double
+    #   '.w':
+    #     color: '#101010' # Text.Whitespace
+    #   '.x':
+    #     color: '#101010' # Other
+
+    # '.syntax.bash .nb':
+    #   color: '#101010'
+    # '.syntax.bash .nv':
+    #   color: '#c32528'
+    # '.syntax.css .k':
+    #   color: '#606060'
+    # '.syntax.css .nc':
+    #   color: '#c32528'
+    # '.syntax.css .nf':
+    #   color: '#c32528'
+    # '.syntax.css .nt':
+    #   color: '#c32528'
+    # '.syntax.rst .k':
+    #   color: '#5d90cd'
+    # '.syntax.rst .ow':
+    #   color: '#5d90cd'
+    # '.syntax.rst .p':
+    #   color: '#5d90cd'
+    # '.syntax.yaml .l-Scalar-Plain':
+    #   color: '#5d90cd'
+    # '.syntax.yaml .p-Indicator':
+    #   color: '#101010'
 
     '.team-profile-follow':
       paddingBottom: '20px'
@@ -1192,6 +1248,35 @@ module.exports = (api) ->
           marginBottom: '5px'
           a:
             fontWeight: '400'
+
+    '.users-list':
+      borderCollapse: 'collapse'
+      borderSpacing: '0'
+      border: '1px solid #ececec'
+      margin: '30px 0px 30px 0px'
+      width: '100%'
+      maxWidth: '100%'
+      thead:
+        backgroundColor: '#f0f0f0'
+        color: '#000'
+        textAlign: 'left'
+      'th, td':
+        borderLeft: '1px solid #ececec'
+        borderWidth: '0 0 0 1px'
+        margin: '0'
+        padding: '20px 20px'
+      'td:first-child, th:first-child':
+        borderLeftWidth: '0'
+      'td.constrained-width':
+        width: '350px'
+        maxWidth: '350px'
+        overflow: 'hidden'
+        textOverflow: 'ellipsis'
+      span:
+        color: 'red'
+        position: 'relative'
+        top: '-0.5em'
+        fontSize: '80%'
 
     # '*':
     #   background: '#000 !important'
