@@ -30,16 +30,16 @@ from config import (
     STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_TOKEN,
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET, TWITTER_CONSUMER_KEY,
     TWITTER_CONSUMER_SECRET
-    )
+)
 
 from model import (
     GitHubProfile, GitHubRepo, Login, SponsorRecord, SponsorTotals, StripeEvent,
     TwitterProfile, User
-    )
+)
 
 from weblite import (
     app, Context, handle, NotFound, Redirect
-    )
+)
 
 import cloudstorage as gcs
 import stripe
@@ -49,7 +49,7 @@ from emoji import EMOJI_MAP, EMOJI_SHORTCODES
 from gfm import (
     AutolinkExtension, AutomailExtension, SpacedLinkExtension,
     StrikethroughExtension
-    )
+)
 
 from github import Client as GithubClient
 
@@ -58,7 +58,7 @@ from google.appengine.api.memcache import (
     delete as delete_cache, delete_multi as delete_cache_multi,
     flush_all, get as get_cache, get_multi as get_cache_multi,
     set as set_cache, set_multi as set_cache_multi
-    )
+)
 
 from google.appengine.api.urlfetch import fetch as urlfetch, POST
 from google.appengine.ext import db
@@ -76,12 +76,12 @@ from markdown.extensions.toc import TocExtension
 from markdown.preprocessors import Preprocessor
 from minfin import (
     PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_FACTORS, PLAN_SLOTS, TERRITORY2TAX
-    )
+)
 
 from tavutil.crypto import (
     create_tamper_proof_string, secure_string_comparison,
     validate_tamper_proof_string
-    )
+)
 
 from territories import TERRITORIES, TERRITORY_CODES
 from twitter import Client as TwitterClient
@@ -142,7 +142,7 @@ def gen_plan_repr():
         plans_gb[tier] = (
             "%s &nbsp;·&nbsp; £%s/month (includes 20%% VAT)"
             % (title, amount_gb)
-            )
+        )
     return plans, plans_gb
 
 Context.PLANS, Context.PLANS_GB = gen_plan_repr()
@@ -382,12 +382,12 @@ def create_github_profile_link(m):
 
 replace_github_usernames = re.compile(
     '(?<=^|(?<=[^a-zA-Z0-9-\.]))(@[A-Za-z0-9]+)'
-    ).sub
+).sub
 
 github = GithubClient(
     GITHUB_CALLER_ID, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
     GITHUB_ACCESS_TOKEN
-    )
+)
 
 # -----------------------------------------------------------------------------
 # Twitter API Client and Utility Functions
@@ -399,12 +399,12 @@ def create_twitter_profile_link(m):
 
 replace_twitter_usernames = re.compile(
     '(?<=^|(?<=[^a-zA-Z0-9-_\.]))(@[A-Za-z0-9_]+)'
-    ).sub
+).sub
 
 twitter = TwitterClient(
     TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
-    )
+)
 
 # -----------------------------------------------------------------------------
 # Mailjet Extension
@@ -435,17 +435,17 @@ def send_email(ctx, subject, name, email, template, **kwargs):
         resp = urlfetch(
             MAILJET_API_URL, encode_json(fields), POST,
             deadline=30, headers=MAILJET_HEADERS, validate_certificate=True
-            )
+        )
     except Exception as err:
         logging.error(
             'A Mailjet error occurred when sending to %s: %r' % (email, err)
-            )
+        )
         return err
     if resp.status_code != 200:
         logging.error(
             'A Mailjet error occurred when sending to %s: %r (status: %d)' % (
-                    email, resp.content, resp.status_code
-            ))
+                email, resp.content, resp.status_code
+        ))
         return resp
 
 Context.send_email = send_email
@@ -521,7 +521,7 @@ def render_markdown(text):
                 AutomailExtension(),
                 CodeHiliteExtension(
                     css_class='syntax', guess_lang=False, linenums=False
-                    ),
+                ),
                 EmojiExtension(),
                 FencedCodeExtension(),
                 FootnoteExtension(),
@@ -588,6 +588,8 @@ def write_file(path, data):
 # VAT Validation
 # -----------------------------------------------------------------------------
 
+INVALID_VAT_ID = "Invalid VAT ID."
+
 def parse_vat_id(vat_id):
     vat_id = remove_invalid_vat_char('', vat_id.upper())
     if not vat_id:
@@ -605,8 +607,6 @@ def parse_vat_id(vat_id):
     return country, vat_number
 
 remove_invalid_vat_char = re.compile('[^A-Z0-9]+').sub
-
-INVALID_VAT_ID = "Invalid VAT ID."
 
 def validate_vat_id(vat_id, attempts, deadline=20):
     parsed = parse_vat_id(vat_id)
@@ -632,7 +632,7 @@ def validate_vat_id(vat_id, attempts, deadline=20):
                 'http://ec.europa.eu/taxation_customs/vies/services/checkVatService',
                 payload, POST, headers=headers, deadline=deadline,
                 validate_certificate=True,
-                )
+            )
             if resp.status_code == 200:
                 break
         except Exception:
@@ -672,11 +672,6 @@ def validate_vat_id(vat_id, attempts, deadline=20):
 # -----------------------------------------------------------------------------
 # Finance-related Utilities
 # -----------------------------------------------------------------------------
-
-ZERO_DECIMAL_PLACES = Decimal('1')
-TWO_DECIMAL_PLACES = Decimal('0.01')
-FOUR_DECIMAL_PLACES = Decimal('0.0001')
-PLAN_PORTIONS = {}
 
 def get_totals_and_record(user):
     user_id = str(user.key().id())
@@ -853,7 +848,7 @@ def cancel_stripe_subscription(user_id, sub_id):
         logging.error(
             "Error retrieving Stripe subscription %s for %s: %r"
             % (sub_id, user_id, e)
-            )
+        )
         return "Sorry, there was an error accessing your sponsorship subscription. Please try again later."
     if sub.status != 'canceled':
         try:
@@ -862,7 +857,7 @@ def cancel_stripe_subscription(user_id, sub_id):
             logging.error(
                 "Error cancelling Stripe subscription %s for %s: %r"
                 % (sub.id, user_id, e)
-                )
+            )
             return "Sorry, there was an error cancelling your sponsorship. Please try again later."
     def txn():
         user = User.get_by_id(user_id)
@@ -888,18 +883,18 @@ def community(ctx, email=None, xsrf=''):
         resp = urlfetch(
             "https://slack.com/api/users.admin.invite", payload=payload,
             method=POST, deadline=30, validate_certificate=True
-            )
+        )
     except Exception as err:
         logging.error(
             "Got unexpected error when trying to invite %r to slack: %r"
             % (email, err)
-            )
+        )
         return {'error': "Sorry, there was an unexpected error. Please try again later."}
     if resp.status_code != 200:
         logging.error(
             "Got unexpected error code %d when trying to invite %r to slack"
             % (resp.status_code, email)
-            )
+        )
         return {'error': "Sorry, there was an unexpected error. Please try again later."}
     return {'sent': True}
 
@@ -951,7 +946,7 @@ def cron_twitter(ctx):
 def cron_update_stripe(ctx):
     query = User.all(keys_only=True).filter(
         'stripe_needs_updating =', True
-        ).filter('', datetime.utcnow() - 10)
+    ).filter('', datetime.utcnow() - 10)
     for key in query:
         update_stripe(key.id())
 
@@ -984,7 +979,7 @@ def login(ctx, return_to='manage.sponsorship', email='', existing=False, xsrf=No
     err = ctx.send_email(
         intent_button, user.name, user.email, 'authlink',
         authlink=authlink, intent=intent, intent_button=intent_button
-        )
+    )
     if err:
         return {
             'error': "Sorry, there was an error emailing %s." % email,
@@ -1059,17 +1054,24 @@ def site_sponsors(ctx, cursor=None):
     }
 
 @handle(['sponsor.gitfund', 'site'])
-def sponsor_gitfund(ctx, plan='', name='', email='', card='', tax_id='', xsrf=None):
+def sponsor_gitfund(
+    ctx, name='', email='', plan='', territory='', tax_id='', card='',
+    xsrf=None
+    ):
     ctx.page_title = "Sponsor GitFund!"
     ctx.stripe_js = True
     if name:
-        ctx.log({"name": name, "plan": plan, "email": email, "tax_id": tax_id})
+        ctx.log({
+            "name": name, "email": email, "plan": plan, "territory": territory,
+            "tax_id": tax_id
+        })
     return {
-        'plan': plan,
         'name': name,
         'email': email,
-        'card': '',
+        'plan': plan,
+        'territory': territory,
         'tax_id': tax_id,
+        'card': '',
     }
 
 @handle
@@ -1103,7 +1105,7 @@ def stripe_webhook(ctx, token, **kwargs):
         kwargs.pop('id'), created=kwargs.pop('created'), customer=customer,
         event_type=kwargs.pop('type'), livemode=kwargs.pop('livemode'),
         data=encode_json(kwargs)
-        )
+    )
     return 'OK'
 
 @handle(['project', 'site'])
@@ -1225,7 +1227,7 @@ def validate_vat(ctx, vat_id):
         resp = "Unexpected error whilst validating. Please try again later."
         logging.error(
             "Unexpected error whilst validating VAT ID %r: %s" % (vat_id, err)
-            )
+        )
     ctx.response_headers["Content-Type"] = "text/plain"
     if isinstance(resp, basestring):
         return "ERROR: " + resp
