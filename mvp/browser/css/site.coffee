@@ -195,6 +195,14 @@ module.exports = (api) ->
       lineHeight: '13px'
       paddingTop: '1px'
 
+    '.backing-plan-disabled':
+      cursor: 'default'
+      pointerEvents: 'none'
+      a:
+        background: '#efefef !important'
+        border: '1px solid #cacaca !important'
+        color: '#000 !important'
+
     '.backing-plan-select':
       textAlign: 'center'
       a:
@@ -315,6 +323,9 @@ module.exports = (api) ->
         margin: '0'
         width: '100%'
 
+    '.card-details':
+      marginBottom: '30px'
+
     '.card-icons':
       display: 'inline-block'
       marginLeft: '10px'
@@ -322,6 +333,7 @@ module.exports = (api) ->
         marginRight: '3px'
         position: 'relative'
         top: '8px'
+        height: '30px'
       '@media all and (max-width: 922px)':
         display: 'block'
         marginLeft: '0'
@@ -845,11 +857,18 @@ module.exports = (api) ->
       padding: '10px 5px'
       textAlign: 'center'
 
+    '.project-activity-bar':
+      lineHeight: '40px'
+      br:
+        display: 'none'
+        '@media all and (max-width: 600px)':
+          display: 'block'
+
     '.project-title':
       fontSize: '48px'
       fontWeight: '400'
       lineHeight: '64px'
-      marginBottom: '30px'
+      marginBottom: '20px'
       '@media all and (max-width: 922px)':
         fontSize: '30px'
         lineHeight: '40px'
