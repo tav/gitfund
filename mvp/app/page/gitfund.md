@@ -4,9 +4,11 @@
 
 * GitFund will make it easy for companies, who tend to be biggest beneficiaries of open source, to give back to the projects that they depend on.
 
-* Unlike most crowdfunding sites, we will be charging 0% platform fee so that projects get as much of the money as possible.
+* Unlike most crowdfunding sites, who tend to take a 5% cut, we will be charging 0% platform fee so that projects will get as much of the money as possible.
 
-* Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 75 sponsors to make this real!
+* We'll also be pretty unique in supporting distributed payouts, so that all collaborators can be paid directly on the platform from project funds.
+
+* Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 75 sponsors to make this real! And, even at our highest tier, it's still less than the cost of a single senior dev at [many large tech firms].
 
 ### Why GitFund?
 
@@ -46,11 +48,13 @@ Some of the key aspects that set GitFund apart from the likes of [Kickstarter][k
 
   Unlike most crowdfunding platforms, which tend to charge a 5% platform fee on top of payment processing fees, GitFund will not be charging a platform fee on the transactions made on the platform.
 
-* **Support for Splitting Funds**
+* **Distributed Payouts**
 
-  The typical crowdfunding site expects projects to manually disburse the funds to individual collaborators. Given the distributed nature of open source projects, this is a lot of effort for most projects.
+  The typical crowdfunding site expects projects to manually disburse the funds to individual collaborators. Given the distributed nature of open source, this is a lot of effort for most projects.
 
   In contrast, GitFund will enable maintainers to transfer funds from the project to individual collaborators — who can then have it paid out straight into their bank account — all directly from the platform.
+
+  The received funds and transfers will also be viewable to all of the team members on a project — ensuring transparency and accountability within projects.
 
 * **Targets Organizations**
 
@@ -108,7 +112,7 @@ And thanks to the "Sponsored By" widget included in the site's footer, your spon
 
 ### Timeline
 
-The initial Beta of GitFund will be ready for use by projects within 4-5 months of us hitting our target. This period will be used to set up the various legal/regulatory requirements as well as to develop the site itself.
+The initial Beta of GitFund will be ready for use by projects within 4 months of us hitting our target. This period will be used to set up the various legal/regulatory requirements as well as to develop the site itself.
 
 The Beta will launch with an initial set of projects. If you'd like your project to be part of the Beta launch, then please leave a supportive comment below with a brief description and a link to your project/repo.
 
@@ -120,9 +124,9 @@ Unlike most crowdfunding sites, we will not be charging a platform fee on GitFun
 
 * We will hold back 10% that will be used as a reserve to cover:
 
-  * Any chargebacks across the whole platform, where we are not able to immediately recover the funds from the project where the chargeback occurred, i.e. due to the funds already being paid out.
+  * Any chargebacks across the whole platform, where we are not able to immediately recover the funds from the project where the chargeback occurred, i.e. due to funds already being paid out.
 
-  * Any excess hosting costs above our allocated budget of £4.5k/month.
+  * Any excess hosting costs above our allocated budget of £5k/month.
 
   After 90 days, all unused amounts from the reserve will then be given back to the projects, in proportion to how much was taken from them.
 
@@ -138,7 +142,7 @@ Even with a super lean dev team, it still requires a decent chunk of cash to be 
 
   Handling money is highly regulated in most countries. For example, in the UK, it is a criminal offence to not comply with [financial sanctions][ofsi] and you need to have a designated money laundering reporting officer as part of the regulated AML controls.
 
-  Just getting the legal advice is expensive. And that's before implementing the relevant controls. And then when you consider that there are over 200 territories, each with their own set of requirements, you start to appreciate why it takes companies like Stripe so long to expand to new countries.
+  Just getting the legal advice is expensive. And that's before implementing the relevant controls. And then when you consider that there are over 200 territories, each with their own set of requirements and license fees, you start to appreciate why it takes companies like Stripe so long to expand to new countries.
 
 * **Customer Support**
 
@@ -268,6 +272,7 @@ And do leave a comment if you like the idea of GitFund. It will be great to hear
 [isaacs]: https://medium.com/open-source-life/money-and-open-source-d44a1953749c
 [kickstarter]: https://www.kickstarter.com/
 [linux]: https://www.linuxfoundation.org/members/corporate
+[many large tech firms]: https://www.glassdoor.co.uk/Salaries/san-francisco-senior-software-engineer-salary-SRCH_IL.0,13_IM759_KO14,38.htm
 [microsoft-github-org]: https://github.com/microsoft
 [mvp]: https://github.com/tav/gitfund/tree/master/mvp
 [nayafia]: https://medium.com/%40nayafia/how-i-stumbled-upon-the-internet-s-biggest-blind-spot-b9aa23618c58

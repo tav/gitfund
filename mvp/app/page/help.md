@@ -40,8 +40,8 @@ to the amount charged and introduces a lot of complexity, e.g.
 * Validating and storing proof that a user is from a specific country.
 
 So, for this MVP, we are only supporting business to business VAT, where the VAT
-is reverse charged and much simpler to handle. And thus why we can only have EU
-sponsors with a valid VAT ID at the moment.
+is reverse charged and much simpler to handle. And thus we are only supporting
+EU sponsors with a valid VAT ID at the moment.
 
 Once the Beta is ready, this limitation will no longer apply as we will have
 full VAT support — including for countries outside the EU.
@@ -67,8 +67,8 @@ You can override the default by uploading the appropriate sponsor image via the
 Hopefully there will be enough interest in supporting the open source ecosystem
 for us to raise our target.
 
-But if by the end of September 2017 we still haven't reached it, then, depending
-on the amount raised and our costs (especially with regards to legals and
+But if by the end of the year we still haven't reached it, then, depending on
+the amount raised and our costs (especially with regards to legals and
 compliance), we will either:
 
 * Continue with the project — albeit delivering at a slightly slower pace than
@@ -96,7 +96,7 @@ eventually support every country out there. If we don't support a country, then
 it will be primarily due to one of three reasons:
 
 * It's not supported by third-party payment processing services that we depend
-  on.
+  on, e.g. Stripe.
 
 * It's on an economic sanctions list of some kind.
 
