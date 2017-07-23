@@ -49,7 +49,10 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 		<a href="/site.sponsors">Sponsors</a>
 		<a href="/community">Slack/IRC Community</a>
 		% if ctx.user_id:
+		<a href="/manage.sponsorship">Manage Sponsorship</a>
 		<a href="/logout">Log Out</a>
+		% else:
+		<a href="/login">Log In</a>
 		% endif
 	</div>
 	<div class="logo"><a href="/"><div class="logo-image"><div class="logo-image-dollar">$</div><div class="logo-image-pipe">&gt;</div></div><div class="logo-text">GitFund</div></a></div>
@@ -78,7 +81,7 @@ ${content}
 			% if sponsor['url']:
 			<a href="${sponsor['url']|h}">${sponsor['text']|h}</a>
 			% else:
-			<a href="#">${sponsor['text']|h}</a>
+			${sponsor['text']|h}
 			% endif
 		</div>
 		% endif
@@ -104,7 +107,9 @@ ${content}
 	<li><a href="/site/privacy">Privacy Policy</a></li>
 	<li><a href="/site/cookies">Cookie Policy</a></li>
 	<li><a href="/site/terms">Terms of Service</a></li>
+	<li><a href="/site/flo-statement">FLO Statement</a></li>
 	<li><a href="/site/code-of-conduct">Code of Conduct</a></li>
+	<li><a href="/site/security">Security Policy</a></li>
 </ul>
 <ul>
 	<li>Follow Us</li>
