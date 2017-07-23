@@ -71,10 +71,10 @@ TERRITORY2TAX = {
 # -----------------------------------------------------------------------------
 
 PLAN_AMOUNTS = {
-    'bronze': 1200,
-    'silver': 2400,
-    'gold': 4800,
-    'platinum': 9600
+    'bronze': 1000,
+    'silver': 2000,
+    'gold': 4000,
+    'platinum': 8000
 }
 
 PLAN_AMOUNTS_GB = {
@@ -100,9 +100,9 @@ def _gen_plan_factors():
     total = Decimal(total)
     for plan in plans:
         factors[plan] = Decimal(PLAN_AMOUNTS[plan]) / total
-    return factors
+    return factors, int(total)
 
-PLAN_FACTORS = _gen_plan_factors()
+PLAN_FACTORS, PLAN_TOTAL = _gen_plan_factors()
 
 if __name__ == '__main__':
     for spec in [PLAN_AMOUNTS, PLAN_AMOUNTS_GB]:
