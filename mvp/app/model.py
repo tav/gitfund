@@ -4,7 +4,6 @@
 from google.appengine.ext import db
 from hashlib import md5
 from json import dumps as encode_json, loads as decode_json
-from minfin import PLAN_VERSION
 
 # -----------------------------------------------------------------------------
 # Models
@@ -82,7 +81,7 @@ class U(db.Model): # key=<auto>
     v = db.IntegerProperty(default=0)
     created = db.DateTimeProperty(auto_now_add=True)
     delinquent = db.BooleanProperty(default=False)
-    delinquent_email = db.BooleanProperty(default=False)
+    delinquent_emailed = db.BooleanProperty(default=False)
     email = db.StringProperty(default='', indexed=False)
     image_id = db.ByteStringProperty(default='', indexed=False)
     link_text = db.StringProperty(default='', indexed=False)
@@ -94,6 +93,7 @@ class U(db.Model): # key=<auto>
     sponsor_type = db.StringProperty(default='')                     # 'stripe' | 'manual'
     sponsorship_started = db.DateTimeProperty()
     stripe_customer_id = db.StringProperty(default='', indexed=False)
+    stripe_is_unpaid = db.BooleanProperty(default=False)
     stripe_needs_cancelling = db.ListProperty(str, indexed=False)
     stripe_needs_updating = db.BooleanProperty(default=False)
     stripe_subscription = db.StringProperty(default='')              # stripe subscription id
@@ -126,21 +126,9 @@ class U(db.Model): # key=<auto>
         return self.link_url
 
     def get_stripe_idempotency_key(self):
-        return '%s.%s' % (self.key().id(), self.stripe_update_version)
+        return 'sub.%s.%s' % (self.key().id(), self.stripe_update_version)
 
     def get_stripe_meta(self):
         return {"version": str(self.stripe_update_version)}
-
-    def get_stripe_plan(self):
-        if self.territory in ('GB', 'IM'):
-            return "%s.v%d.gb" % (self.plan, PLAN_VERSION)
-        return "%s.v%d" % (self.plan, PLAN_VERSION)
-
-    def set_needs_syncing(self):
-        if (self.stripe_needs_cancelling or self.stripe_needs_updating or
-            self.tax_id_to_validate or self.totals_need_syncing):
-            self.needs_syncing = True
-        else:
-            self.needs_syncing = False
 
 User = U
