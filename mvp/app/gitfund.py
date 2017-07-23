@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from base64 import b32encode, b64encode
 from cgi import escape
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from hashlib import sha256
 from json import dumps as encode_json
@@ -75,7 +75,8 @@ from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 from markdown.preprocessors import Preprocessor
 from minfin import (
-    PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_FACTORS, PLAN_SLOTS, TERRITORY2TAX
+    PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_FACTORS, PLAN_SLOTS, PLAN_VERSION,
+    TERRITORY2TAX
 )
 
 from tavutil.crypto import (
@@ -93,7 +94,7 @@ from twitter import Client as TwitterClient
 AUTH_HANDLERS = frozenset([
     'cancel.sponsorship',
     'manage.sponsorship',
-    'update.billing.details',
+    'sponsor.gitfund',
     'update.sponsor.profile',
 ])
 
@@ -131,20 +132,26 @@ stripe.api_key = STRIPE_SECRET_KEY
 # Plan Representation
 # -----------------------------------------------------------------------------
 
+def format_currency(amount):
+    if amount < 1000:
+        return u'£%s' % amount
+    return u'£%sk' % (Decimal(amount) / Decimal(1000))
+
 def gen_plan_repr():
     plans = {}
     plans_gb = {}
     for tier in ['bronze', 'silver', 'gold', 'platinum']:
         title = tier.title()
-        amount = "{:,}".format(PLAN_AMOUNTS[tier])
-        amount_gb = "{:,}".format(PLAN_AMOUNTS_GB[tier])
-        plans[tier] = "%s &nbsp;·&nbsp; £%s/month" % (title, amount)
+        amount = format_currency(PLAN_AMOUNTS[tier])
+        amount_gb = format_currency(PLAN_AMOUNTS_GB[tier])
+        plans[tier] = u"%s &nbsp;·&nbsp; %s/month" % (title, amount)
         plans_gb[tier] = (
-            "%s &nbsp;·&nbsp; £%s/month (includes 20%% VAT)"
+            u"%s &nbsp;·&nbsp; %s/month (includes 20%% VAT)"
             % (title, amount_gb)
         )
     return plans, plans_gb
 
+Context.format_currency = staticmethod(format_currency)
 Context.PLANS, Context.PLANS_GB = gen_plan_repr()
 
 # -----------------------------------------------------------------------------
@@ -299,9 +306,13 @@ def get_totals():
         pct_int = int(fraction * 100)
         if pct_int:
             percent = '%d%%' % pct_int
-            progress = '%d%% raised!' % pct_int
+            if pct_int == 100:
+                progress = '100% raised!'
+            else:
+                progress = '%d%% raised of total' % pct_int
         else:
             percent = '1%'
+            progress = '%.2f%% raised of total' % (fraction * 100)
     return Totals(sponsors, raised, plans, percent, progress)
 
 SocialProfiles = namedtuple('SocialProfiles', ['github', 'repo', 'twitter'])
@@ -694,11 +705,12 @@ def cancel_sponsorship_txn(user_id, totals_need_syncing=True):
     if not user.sponsor:
         return user
     user.delinquent = False
-    user.delinquent_email = False
+    user.delinquent_emailed = False
     user.plan = ''
     user.sponsor = False
     user.sponsor_type = ''
     user.sponsorship_started = None
+    user.stripe_is_unpaid = False
     user.stripe_needs_updating = False
     if user.stripe_subscription:
         user.stripe_needs_cancelling.append(user.stripe_subscription)
@@ -706,7 +718,6 @@ def cancel_sponsorship_txn(user_id, totals_need_syncing=True):
     user.totals_need_syncing = totals_need_syncing
     if totals_need_syncing:
         user.totals_version += 1
-    user.set_needs_syncing()
     user.put()
     return user
 
@@ -732,9 +743,72 @@ def cancel_stripe_subscription(user_id, sub_id):
         user = User.get_by_id(user_id)
         if sub_id in user.stripe_needs_cancelling:
             user.stripe_needs_cancelling.remove(sub_id)
-            user.set_needs_syncing()
             user.put()
     run_in_transaction(txn)
+
+def check_subscription_status(ctx, user, user_id):
+    sub_id = user.stripe_subscription
+    try:
+        sub = stripe.Subscription.retrieve(sub_id)
+    except Exception as e:
+        logging.error(
+            "Error retrieving Stripe subscription %s for %s: %r"
+            % (sub_id, user_id, e)
+        )
+        return "Sorry, there was an error accessing your sponsorship subscription. Please try again later."
+    status = sub.status
+    def txn():
+        user = User.get_by_id(user_id)
+        if user.stripe_subscription != sub_id:
+            return user
+        if status == 'active':
+            if user.delinquent:
+                user.delinquent = False
+                user.delinquent_emailed = False
+            if user.stripe_is_unpaid:
+                user.stripe_is_unpaid = False
+        elif status == 'past_due':
+            if not user.delinquent:
+                user.delinquent = True
+                user.delinquent_emailed = False
+            if user.stripe_is_unpaid:
+                user.stripe_is_unpaid = False
+        elif status == 'canceled':
+            user.delinquent = False
+            user.delinquent_emailed = False
+            user.plan = ''
+            user.sponsor = False
+            user.sponsor_type = ''
+            user.sponsorship_started = None
+            user.stripe_is_unpaid = False
+            user.stripe_needs_updating = False
+            user.stripe_subscription = ''
+            user.totals_need_syncing = True
+            user.totals_version += 1
+        elif status == 'unpaid':
+            user.stripe_is_unpaid = True
+        user.put()
+        return user
+    user = run_in_transaction(txn)
+    if user.delinquent and not user.delinquent_emailed:
+        authlink = ctx.compute_url('login', 'sponsor.gitfund', email=user.email, existing='1')
+        err = ctx.send_email(
+            "Payment failure. Please update your card details",
+            user.name, user.email, 'delinquent', authlink=authlink
+            )
+        if err:
+            return err
+        def mark_as_emailed():
+            user = User.get_by_id(user_id)
+            if user.delinquent:
+                user.delinquent_emailed = True
+                user.put()
+        run_in_transaction(mark_as_emailed)
+
+def get_stripe_plan(plan, territory):
+    if territory in ('GB', 'IM'):
+        return "%s.v%d.gb" % (plan, PLAN_VERSION)
+    return "%s.v%d" % (plan, PLAN_VERSION)
 
 def handle_cancellation(user_id, totals_need_syncing=True):
     user = run_in_transaction(cancel_sponsorship_txn, user_id, totals_need_syncing)
@@ -749,21 +823,31 @@ def handle_stripe_cancellation(user, user_id):
             err = stripe_err
     return err
 
-def sync_sponsor(user, first_time=False):
+def sync_sponsor(ctx, user, first_time=False):
+    err = []
     user_id = user.key().id()
     # Sync the totals.
     if user.totals_need_syncing:
+        totals_version = user.totals_version
         maxed = run_in_transaction(
-            sync_totals_txn, str(user_id), user.plan, user.totals_version
+            sync_totals_txn, str(user_id), user.plan, totals_version
         )
         if maxed:
-            handle_cancellation(
-                user_id, first_time=first_time, totals_need_syncing=False
-            )
-            return (
+            user, _err = handle_cancellation(user_id, totals_need_syncing=False)
+            err.append(
                 "Sorry, there are no %s sponsorship slots left."
                 % user.plan.title()
             )
+            if _err:
+                err.append(_err)
+        else:
+            def txn():
+                user = User.get_by_id(user_id)
+                if user.totals_need_syncing and totals_version == user.totals_version:
+                    user.totals_need_syncing = False
+                    user.put()
+                return user
+            user = run_in_transaction(txn)
     # Create/update the Stripe subscription.
     if user.stripe_needs_updating:
         try:
@@ -774,56 +858,79 @@ def sync_sponsor(user, first_time=False):
             if create_sub:
                 subscription = stripe.Subscription.create(
                     customer=user.stripe_customer_id,
-                    idempotency_key=user.get_stripe_key(),
+                    idempotency_key=user.get_stripe_idempotency_key(),
                     metadata=user.get_stripe_meta(),
-                    plan=user.get_stripe_plan(),
-                    trial_end=(int(time()) + 60) # TODO: remove this once testing is done.
-                    )
+                    plan=get_stripe_plan(user.plan, user.territory),
+                )
         except stripe.error.CardError as e:
-            return "Sorry, there was an error processing your payment: %s" % e.json_body['error']['message']
+            err.append(
+                "Sorry, there was an error processing your payment: %s"
+                % e.json_body['error']['message']
+            )
         except Exception as e:
-            logging.error("Error handling subscription for %r on %r plan: %r" % (user.stripe_customer_id, user.plan, e))
-            return "Sorry, there was an unexpected error with our payment processor. Please try again later."
-        def txn():
-            user = User.get_by_id(user_id)
-            if user.stripe_needs_updating:
-                user.stripe_subscription = subscription.id
-                user.stripe_needs_updating = False
-                user.set_needs_syncing()
-                user.put()
-            return user()
-        user = run_in_transaction(txn)
+            logging.error(
+                "Error handling subscription for %r on %r plan: %r"
+                % (user.stripe_customer_id, user.plan, e)
+            )
+            err.append(
+                "Sorry, there was an unexpected error with our payment processor. Please try again later."
+            )
+        if not err:
+            stripe_version = user.stripe_update_version
+            sub_id = subscription.id
+            def txn():
+                user = User.get_by_id(user_id)
+                if user.stripe_needs_updating and stripe_version == user.stripe_update_version:
+                    user.stripe_subscription = sub_id
+                    user.stripe_needs_updating = False
+                    user.put()
+                elif sub_id not in user.stripe_needs_cancelling:
+                    user.stripe_needs_cancelling.append(sub_id)
+                    user.put()
+                return user
+            user = run_in_transaction(txn)
     # Cancel any outstanding subscriptions.
     if user.stripe_needs_cancelling:
-        handle_stripe_cancellation(user, user_id)
-    # Skip the VAT ID check the first time since it's already been attempted.
+        _err = handle_stripe_cancellation(user, user_id)
+        if _err:
+            err.append(_err)
+    # Skip the VAT ID and delinquency checks if it is the first time.
     if first_time:
-        return
+        return err
     # Check the VAT ID if necessary.
     if user.tax_id_to_validate:
-        tax_info, is_invalid, err = check_vat_id(user.tax_id)
-        if err:
-            return err
-        def txn(tax_id):
-            user = User.get_by_id(user_id)
-            if not user.tax_id_to_validate:
-                return
-            if user.tax_id != tax_id:
-                return
-            if is_invalid:
-                user.tax_id_is_invalid = True
-            else:
-                user.tax_id_is_invalid = False
-                user.tax_id_detailed = tax_info
-            user.tax_id_to_validate = False
-            user.set_needs_syncing()
-            user.put()
-        run_in_transaction(txn, user.tax_id)
+        tax_info, is_invalid, _err = check_vat_id(user.tax_id)
+        if not _err:
+            def txn(tax_id):
+                user = User.get_by_id(user_id)
+                if not user.tax_id_to_validate:
+                    return
+                if user.tax_id != tax_id:
+                    return
+                if is_invalid:
+                    user.tax_id_detailed = ''
+                    user.tax_id_is_invalid = True
+                else:
+                    user.tax_id_detailed = tax_info
+                    user.tax_id_is_invalid = False
+                user.tax_id_to_validate = False
+                user.put()
+            run_in_transaction(txn, user.tax_id)
+        if _err:
+            err.append(_err)
+    # Check if the subscription is past_due or has been cancelled.
+    if user.stripe_subscription:
+        _err = check_subscription_status(ctx, user, user_id)
+        if _err:
+            err.append(_err)
+    if err:
+        logging.error(
+            "There were issues syncing sponsorship info for %s: %r"
+            % (user_id, err)
+        )
+    return err
 
-def sync_stripe():
-    pass
-
-def sync_totals_txn(plan, user_id, version):
+def sync_totals_txn(user_id, plan, version):
     totals = SponsorTotals.get_by_key_name('gitfund')
     plans = totals.get_plans()
     record = SponsorRecord.get_by_key_name(user_id, parent=totals)
@@ -833,14 +940,15 @@ def sync_totals_txn(plan, user_id, version):
         return
     if record.plan:
         plans[record.plan] -= 1
-    record.plan = plan
-    record.version = version
+        record.plan = ''
     if plan:
         if plans[plan] >= PLAN_SLOTS[plan]:
             totals.set_plans(plans)
             db.put([totals, record])
             return True
         plans[plan] += 1
+    record.plan = plan
+    record.version = version
     totals.set_plans(plans)
     db.put([totals, record])
     return
@@ -946,10 +1054,10 @@ def cancel_sponsorship(ctx, xsrf=None):
             'sponsor': user
         }
     ctx.validate_xsrf(xsrf)
-    # handle case where .stripe_subscription is ''
-    err = cancel_stripe_subscription(user.key().id(), user.stripe_subscription)
+    _, err = handle_cancellation(ctx.user_id)
     if err:
         return {'error': err}
+    delete_cache('sponsors')
     return {'cancelled': True}
 
 @handle(['community', 'site'])
@@ -1006,16 +1114,11 @@ def cron_github(ctx):
     return 'OK'
 
 @handle
-def cron_sponsor(ctx):
-    query = User.all().filter(
-        'needs_syncing =', True
-    ).filter('', datetime.utcnow() - 10)
-    for user in query:
-        sync_sponsor(user)
-
-@handle
-def cron_stripe(ctx):
-    pass
+def cron_sync(ctx):
+    for user in User.all().filter(
+        'updated <=', datetime.utcnow() - timedelta(minutes=10)
+    ).order('updated'):
+        sync_sponsor(ctx, user)
 
 @handle
 def cron_twitter(ctx):
@@ -1143,19 +1246,29 @@ def sponsor_gitfund(
     ):
     ctx.page_title = "Sponsor GitFund!"
     ctx.stripe_js = True
-    if ctx.user_id:
-        if plan:
-            raise Redirect('/update.billing.details?plan='+plan)
-        raise Redirect('/update.billing.details')
     kwargs = {
-        'name': name,
-        'email': email,
-        'plan': plan,
-        'territory': territory,
-        'tax_id': tax_id,
         'card': '',
+        'email': email,
+        'name': name,
+        'plan': plan,
+        'tax_id': tax_id,
+        'territory': territory,
     }
+    user = ctx.user
+    if user:
+        kwargs['email'] = user.email
+        kwargs['exists'] = True
+        kwargs['exists_plan'] = user.plan
     if not xsrf:
+        if user:
+            kwargs['name'] = user.name
+            if plan:
+                kwargs['plan'] = plan
+            else:
+                kwargs['plan'] = user.plan
+            kwargs['tax_id'] = user.tax_id
+            kwargs['tax_id_is_invalid'] = user.tax_id_is_invalid
+            kwargs['territory'] = user.territory
         return kwargs
     ctx.log(kwargs)
     # Validate input.
@@ -1168,12 +1281,15 @@ def sponsor_gitfund(
         return kwargs
     name = name.strip()
     if not name:
-        return error("Please specify your name.")
-    email = email.strip()
-    if not email:
-        return error("Please provide your email address.")
-    if not is_email(email):
-        return error("Please provide a valid email address.")
+        return error("Please specify the sponsor name.")
+    if len(name.encode('utf-8')) > 60:
+        return error("The sponsor name must be less than 60 bytes long.")
+    if not user:
+        email = email.strip()
+        if not email:
+            return error("Please provide your email address.")
+        if not is_email(email):
+            return error("Please provide a valid email address.")
     if plan not in PLAN_AMOUNTS:
         return error("Please select a sponsorship tier.")
     if territory not in TERRITORY_CODES:
@@ -1185,36 +1301,50 @@ def sponsor_gitfund(
         tax_prefix = TERRITORY2TAX[territory][0]
         if tax_id[:2].upper() != tax_prefix:
             return error("Please provide a VAT ID for the selected country.")
-        tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
-        if is_invalid:
-            return error(INVALID_VAT_ID)
+        if user and user.tax_id == tax_id:
+            if user.tax_id_to_validate:
+                validate = True
+            elif user.tax_id_is_invalid:
+                return error(INVALID_VAT_ID)
+            else:
+                tax_info = user.tax_id_detailed
+                validate = False
+        else:
+            validate = True
+        if validate:
+            tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
+            if is_invalid:
+                return error(INVALID_VAT_ID)
     else:
         tax_id = ''
     kwargs['card'] = ''
     card = card.strip()
-    if not card:
-        return error("Please enable JavaScript before filling in your card details.")
     # Check if we already have a Sponsor record for the given email address.
     def existing_sponsor():
-        link = ctx.compute_url("login", "update.billing.details", email=email, existing='1')
+        link = ctx.compute_url("login", "sponsor.gitfund")
         return error(
-            'There is already an active sponsorship set up for %s. Please use <a href="%s">this link</a> to update your sponsorship details.'
+            'There is already an active sponsorship set up for %s. Please <a href="%s">sign in</a> to update your sponsorship details.'
             % (escape(email), link), html=True
         )
-    user = get_user_from_email(email) # COST(2)
-    if user and user.sponsor:
-        return existing_sponsor()
-    # Create a new user if there's no existing user record.
-    if user is None:
-        user = create_user(name, email) # COST(2-4)
-    user_id = user.key().id()
-    ctx.set_secure_cookie('auth', str(user_id))
+    if user:
+        user_id = ctx.user_id
+    else:
+        user = get_user_from_email(email) # COST(2)
+        if user and user.sponsor:
+            return existing_sponsor()
+        # Create a new user if there's no existing user record.
+        if user is None:
+            user = create_user(name, email) # COST(2-4)
+        user_id = user.key().id()
+        ctx._user_id = user_id
+        ctx._user = user
+        ctx.set_secure_cookie('auth', str(user_id))
     # Create a Stripe Customer record if it doesn't exist.
     if user.stripe_customer_id:
         cus_exists = True
     else:
         try:
-            customer = stripe.Customer.create(email=email, source=card) # COST(1)
+            customer = stripe.Customer.create(email=email) # COST(1)
         except Exception as e:
             logging.error("Error creating Stripe customer with email %s: %r" % (email, e))
             return error(STRIPE_ERROR)
@@ -1226,62 +1356,86 @@ def sponsor_gitfund(
             user.put()
             return user, False
         user, cus_exists = run_in_transaction(txn) # COST(1)
-        if cus_exists and user.sponsor:
-            return existing_sponsor()
-    # Retrieve the existing customer if it already exists.
-    if cus_exists:
+        ctx._user = user
+    # Ensure card token exists where customer hasn't already been created.
+    if (not cus_exists) and (not card):
+        return error("Please enable JavaScript before filling in your card details.")
+    if card:
+        # Retrieve the existing customer if it already exists.
+        if cus_exists:
+            try:
+                customer = stripe.Customer.retrieve(user.stripe_customer_id)
+            except Exception as e:
+                logging.error("Error retrieving Stripe customer %s: %r" % (user.stripe_customer_id, e))
+                return error(STRIPE_ERROR)
+        # Add the new card as the default source.
         try:
-            customer = stripe.Customer.retrieve(user.stripe_customer_id)
+            customer.default_source = customer.sources.create(source=card).id # COST(1)
+            customer.save() # COST(1)
+        except stripe.error.CardError as e:
+            logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
+            return error("Sorry, there was an error processing your payment: %s" % e.json_body['error']['message'])
         except Exception as e:
-            logging.error("Error retrieving Stripe customer %s: %r" % (user.stripe_customer_id, e))
+            logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
             return error(STRIPE_ERROR)
-    # Add the new card as the default source.
-    try:
-        customer.default_source = customer.sources.create(source=card).id # COST(1)
-        customer.save() # COST(1)
-    except stripe.error.CardError as e:
-        logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
-        return error("Sorry, there was an error processing your payment: %s" % e.json_body['error']['message'])
-    except Exception as e:
-        logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
-        return error(STRIPE_ERROR)
     # Check that a sponsorship slot is available.
-    slots = PLAN_SLOTS[plan]
-    totals = SponsorTotals.get_by_key_name('gitfund') # COST(1)
-    plans = totals.get_plans()
-    if plans[plan] >= slots:
-        return error("Sorry, there are no %s sponsorship slots left." % plan.title())
-    # Set up sponsorship.
+    if plan != user.plan:
+        slots = PLAN_SLOTS[plan]
+        totals = SponsorTotals.get_by_key_name('gitfund') # COST(1)
+        plans = totals.get_plans()
+        if plans[plan] >= slots:
+            return error("Sorry, there are no %s sponsorship slots left." % plan.title())
+    # Set up or update sponsorship.
     def txn():
         user = User.get_by_id(user_id)
-        if user.sponsor:
-            return user, True
-        user.plan = plan
-        user.sponsor = True
+        user.name = name
         user.sponsor_type = 'stripe'
-        user.sponsorship_started = datetime.utcnow()
-        user.stripe_needs_updating = True
-        user.stripe_update_version += 1
+        first_time = False
+        if not user.sponsor:
+            first_time = True
+            user.sponsor = True
+            user.sponsorship_started = datetime.utcnow()
+        new_stripe_plan = get_stripe_plan(plan, territory)
+        if user.plan:
+            existing_stripe_plan = get_stripe_plan(user.plan, user.territory)
+        else:
+            existing_stripe_plan = ''
+        if plan != user.plan:
+            user.plan = plan
+            user.totals_need_syncing = True
+            user.totals_version += 1
+        if existing_stripe_plan != new_stripe_plan:
+            user.stripe_needs_cancelling.append(user.stripe_subscription)
+            user.stripe_needs_updating = True
+            user.stripe_subscription = ''
+            user.stripe_update_version += 1
         if tax_id:
             user.tax_id = tax_id
             if tax_info:
                 user.tax_id_detailed = tax_info
+                user.tax_id_to_validate = False
+                user.tax_id_is_invalid = False
             else:
+                user.tax_id_detailed = ''
                 user.tax_id_to_validate = True
+                user.tax_id_is_invalid = False
+        else:
+            user.tax_id = ''
+            user.tax_id_detailed = ''
+            user.tax_id_to_validate = False
+            user.tax_id_is_invalid = False
         user.territory = territory
-        user.totals_need_syncing = True
-        user.totals_version += 1
-        user.needs_syncing = True
         user.put()
-        return user, False
-    user, exists = run_in_transaction(txn) # COST(1)
-    if exists:
-        return existing_sponsor()
-    err = sync_sponsor(user)
+        return user, first_time
+    user, first_time = run_in_transaction(txn) # COST(1)
+    ctx._user = user
+    err = sync_sponsor(ctx, user, first_time)
     if err:
-        return error(err)
+        return error(err[0])
     delete_cache('sponsors')
-    raise Redirect('/update.sponsor.profile?first_time=1')
+    if (not user.link_text) or (not user.link_url):
+        raise Redirect('/update.sponsor.profile?setup=1')
+    return {'updated': True}
 
 @handle
 def sponsor_image(ctx, id, height=None):
@@ -1333,19 +1487,16 @@ def tav(ctx, project='', **kwargs):
         'totals': get_local('totals'),
     }
 
-@handle(['update.billing.details', 'site'], anon=False)
-def update_billing_details(ctx, plan='', name='', card='', xsrf=None):
-    ctx.page_title = "Update Billing Details"
-
 @handle(['update.sponsor.profile', 'site'], anon=False)
 def update_sponsor_profile(
-    ctx, link_text='', link_url='', image=None, first_time='', xsrf=None
+    ctx, link_text='', link_url='', image=None, setup='', xsrf=None
     ):
     ctx.page_title = "Update Sponsor Profile"
     if xsrf is None:
         return {
             'link_text': ctx.user.get_link_text(),
             'link_url': ctx.user.link_url,
+            'setup': setup,
         }
     def error(msg):
         return {

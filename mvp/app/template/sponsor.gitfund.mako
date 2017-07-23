@@ -47,7 +47,7 @@
 					<optgroup label="${tset[-1][0]}">
 					% endif
 					% for territory_name, territory_code in tset:
-					<option value="${territory_code}">${territory_name}</option>
+					<option value="${territory_code}"${territory == territory_code and ' selected' or ''}>${territory_name}</option>
 					% endfor
 					% if len(tset) != 1:
 					</optgroup>
@@ -66,15 +66,15 @@
 		</div>
 		% if not card:
 		<div class="clear"></div>
-		<h3>Card Details<div class="card-secure"><img src="${STATIC('gfx/secure.svg')}">Secure</div></h3>
+		<h3 class="card-details">Card Details<div class="card-secure"><img src="${STATIC('gfx/secure.svg')}">Secure</div></h3>
 		<div class="field">
 			<label for="card-number">Card Number</label>
 			<div class="field-data">
 				<input id="card-number" class="field-input" type="tel">
 				<div class="card-icons" id="card-icons">
-					<img src="${STATIC('gfx/card.visa.png')}" id="card-visa">
-					<img src="${STATIC('gfx/card.mastercard.png')}" id="card-mastercard">
-					<img src="${STATIC('gfx/card.amex.png')}" id="card-amex">
+					<img src="${STATIC('gfx/card.visa.svg')}" id="card-visa">
+					<img src="${STATIC('gfx/card.mastercard.svg')}" id="card-mastercard">
+					<img src="${STATIC('gfx/card.amex.svg')}" id="card-amex">
 				</div>
 				<div id="card-number-error" class="field-errmsg"></div>
 			</div>
@@ -83,13 +83,13 @@
 			<label for="card-exp-month">Expiration</label>
 			<div class="field-data">
 				<div class="select-box"><select id="card-exp-month">
-					<option value="">MM</option>
+					<option value="" style="display: none">MM</option>
 					% for month in range(1, 13):
 					<option value="${'%02d' % month}">${'%02d' % month}</option>
 					% endfor
 				</select></div>
 				<div class="select-box"><select id="card-exp-year">
-					<option value="">YY</option>
+					<option value="" style="display: none">YY</option>
 					<% 
 						from datetime import datetime
 						year_start = datetime.utcnow().year - 2000
