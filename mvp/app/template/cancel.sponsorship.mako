@@ -6,11 +6,11 @@
 <div class="inner"><div class="content center pad-bottom">
 	<br><br>
 	<p>
-		Are you sure you want to cancel the £${sponsor.plan_amount/100}/month sponsorship from ${sponsor.email|h}?
+		Are you sure you want to cancel the ${sponsor.plan.title()} sponsorship from ${sponsor.email|h}?
 	</p>
 	<br>
 	<div class="form center">
-		<form action="/cancel.donation" method="POST">
+		<form action="/cancel.sponsorship" method="POST">
 			<input type="hidden" name="xsrf" value="${ctx.xsrf_token}">
 			<input type="submit" name="submit" value="Cancel Sponsorship">
 		</form>

@@ -3,7 +3,7 @@
 		<thead>
 			<th>Name</th>
 			<th>Email</th>
-			<th>Company</th>
+			<th>Profile</th>
 			<th>Plan</th>
 			<th>Info</th>
 		</thead>
@@ -11,12 +11,24 @@
 		<tr>
 			<td class="constrained-width">${user.name|h}</td>
 			<td class="constrained-width"><a href="mailto:${user.email|h}">${user.email|h}</a></td>
-			<td class="constrained-width">${user.company|h}</td>
+			<td class="constrained-width">
+			% if user.link_text:
+				% if user.link_url:
+				<a href="${user.link_url|h}">${user.link_text}</a>
+				% else:
+				${user.link_text}
+				% endif
+			% endif
+			</td>
 			<td>
 				% if user.plan:
-				${user.plan}${user.delinquent and '<span>*</span>' or ''}
-				% else:
-				${user.status}
+					${user.plan}
+					% if user.delinquent:
+					<em>*delinquent</em>
+					% endif
+					% if user.stripe_is_unpaid:
+					<em>*unpaid</em>
+					% endif
 				% endif
 			</td>
 			<td>
@@ -25,12 +37,12 @@
 				% else:
 				<a href="http://localhost:8000/datastore/edit/${str(user.key())}">edit</a>
 				% endif
-				% if user.stripe_id:
+				% if user.stripe_customer_id:
 					·
 					% if LIVE:
-					<a href="https://dashboard.stripe.com/customers/${user.stripe_id}">stripe</a>
+					<a href="https://dashboard.stripe.com/customers/${user.stripe_customer_id}">stripe</a>
 					% else:
-					<a href="https://dashboard.stripe.com/test/customers/${user.stripe_id}">stripe</a>
+					<a href="https://dashboard.stripe.com/test/customers/${user.stripe_customer_id}">stripe</a>
 					% endif
 				% endif
 			</td>

@@ -2,6 +2,8 @@
 <div class="alert-red">${error|h}</div>
 % elif updated:
 <div class="alert-green">Your sponsor profile has been updated. Thank you for your support!</div>
+% elif setup:
+<div class="alert-green">Thank you for sponsoring GitFund! You can now set up your sponsor profile.</div>
 % endif
 <div class="inner"><div class="content">
 <h1>Update Your Sponsor Profile</h1>

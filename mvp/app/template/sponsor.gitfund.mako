@@ -1,20 +1,24 @@
-% if donated:
-<div class="alert-green">Thank you for sponsoring GitFund!</div>
+% if updated:
+<div class="alert-green">Thank you. Your sponsorship details have been updated.</div>
 % else:
 % if error:
 <div class="alert-red">${error|h}</div>
-% endif
-% if error_html:
+% elif error_html:
 <div class="alert-red">${error_html}</div>
 % endif
 <div class="inner content">
 	<div class="notice">
+	% if exists_plan:
+		Update Billing Details
+	% else:
 		Thank you for supporting GitFund.
 		Your sponsorship will help make a real difference.
+	% endif
 	</div>
 	<form action="/sponsor.gitfund" method="POST" id="sponsor-form" class="dataform">
+		% if not exists:
 		<div class="field">
-			<label for="sponsor-name">Sponsor Name</label>
+			<label for="sponsor-name">Your Name</label>
 			<div class="field-data">
 				<input id="sponsor-name" class="field-input" name="name" value="${name|h}" autofocus>
 				<div id="sponsor-name-error" class="field-errmsg"></div>
@@ -27,6 +31,7 @@
 				<div id="sponsor-email-error" class="field-errmsg"></div>
 			</div>
 		</div>
+		% endif
 		<div class="field">
 			<label for="sponsor-plan">Sponsorship Tier</label>
 			<div class="field-data">
@@ -41,7 +46,7 @@
 			<label for="sponsor-territory">Country</label>
 			<div class="field-data">
 				<div class="select-box"><select id="sponsor-territory" name="territory">
-				<option value="" style="display: none"></option>
+				<option value=""></option>
 				% for tset in ctx.TERRITORIES:
 					% if len(tset) != 1:
 					<optgroup label="${tset[-1][0]}">
@@ -57,16 +62,23 @@
 				<div id="sponsor-territory-error" class="field-errmsg"></div>
 			</div>
 		</div>
-		<div class="field" id="sponsor-tax-id-field" style="display: none;">
+		<div class="field${tax_id_is_invalid and ' field-error' or ''}" id="sponsor-tax-id-field" style="${territory not in ctx.TERRITORY2TAX and 'display: none;' or ''}">
 			<label for="sponsor-tax-id">VAT ID</label>
 			<div class="field-data">
 				<input id="sponsor-tax-id" class="field-input" name="tax_id" value="${tax_id|h}" autocapitalize="none" autocorrect="off">
-				<div id="sponsor-tax-id-error" class="field-errmsg"></div>
+				<div id="sponsor-tax-id-error" class="field-errmsg">
+				% if tax_id_is_invalid:
+				Invalid VAT ID.
+				% endif
+				</div>
 			</div>
 		</div>
 		% if not card:
 		<div class="clear"></div>
 		<h3 class="card-details">Card Details<div class="card-secure"><img src="${STATIC('gfx/secure.svg')}">Secure</div></h3>
+		% if exists_plan:
+		<p>Leave this section empty if you do not wish to update your card details.<br><br></p>
+		% endif
 		<div class="field">
 			<label for="card-number">Card Number</label>
 			<div class="field-data">
@@ -83,13 +95,13 @@
 			<label for="card-exp-month">Expiration</label>
 			<div class="field-data">
 				<div class="select-box"><select id="card-exp-month">
-					<option value="" style="display: none">MM</option>
+					<option value="">MM</option>
 					% for month in range(1, 13):
 					<option value="${'%02d' % month}">${'%02d' % month}</option>
 					% endfor
 				</select></div>
 				<div class="select-box"><select id="card-exp-year">
-					<option value="" style="display: none">YY</option>
+					<option value="">YY</option>
 					<% 
 						from datetime import datetime
 						year_start = datetime.utcnow().year - 2000
@@ -112,8 +124,12 @@
 		<input type="hidden" name="xsrf" value="${ctx.xsrf_token}">
 		<input id="card-token" type="hidden" name="card" value="${card|h}">
 		<div class="field-submit">
+			% if exists_plan:
+			<input type="submit" value="Update Billing Details">
+			% else:
 			<p>By confirming your monthly sponsorship, you are agreeing to <a href="/site/terms">GitFund's Terms of Service</a> and <a href="/site/privacy">Privacy Policy</a>.</p>
 			<input type="submit" value="Confirm Monthly Sponsorship">
+			% endif
 		</div>
 	</form>
 </div>
