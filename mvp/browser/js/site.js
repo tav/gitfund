@@ -262,10 +262,12 @@ defpkg('app', function(exports, root) {
       }
     };
     var hideError = function(id) {
-      if (!errors[id]) {
-        return;
+      if (id !== 'sponsor-tax-id') {
+        if (!errors[id]) {
+          return;
+        }
+        errors[id] = false;
       }
-      errors[id] = false;
       removeClass(doc.$(id + '-error').parentNode.parentNode, 'field-error');
     };
     var isValidCVC = function(cvc) {
@@ -299,7 +301,7 @@ defpkg('app', function(exports, root) {
     };
     var isValidName = function(name) {
       if (name === "") {
-        showError('sponsor-name', "Please specify the name of the sponsor.");
+        showError('sponsor-name', "Please specify your name.");
       } else {
         return true;
       }
@@ -313,6 +315,13 @@ defpkg('app', function(exports, root) {
         return true;
       }
     };
+    var isValidTaxID = function(taxPrefix, taxID) {
+      if (taxID.length <= 4 || taxID.substring(0, 2).toUpperCase() != taxPrefix) {
+        showError('sponsor-tax-id', "Invalid VAT ID.")
+      } else {
+        return true;
+      }
+    }
     var isValidTerritory = function(territory) {
       if (territory === "") {
         showError('sponsor-territory', "Please select your country.");
@@ -320,39 +329,57 @@ defpkg('app', function(exports, root) {
         return true;
       }
     };
-    $name.addEventListener('input', function() {
-      if (submitted && isValidName($name.value)) {
-        hideError('sponsor-name');
-      }
-    });
     if (!isUpdateForm) {
-      $email.addEventListener('input', function() {
-        if (submitted && isValidEmail($email.value)) {
-          hideError('backer-email');
+      $name.addEventListener('input', function() {
+        if (submitted && isValidName($name.value)) {
+          hideError('sponsor-name');
         }
       });
-      $territory.addEventListener('change', function() {
-        var territory = $territory.options[$territory.selectedIndex].value,
-            taxPrefix = TAX[territory],
-            planRepr = root.PLANS;
-        if (taxPrefix) {
-          if (taxPrefix == "GB") {
-            planRepr = root.PLANS_GB;
-          }
-          $taxID.value = taxPrefix;
-          $taxIDField.style.display = 'block';
-        } else {
-          $taxIDField.style.display = 'none';
-          $taxID.value = '';
-        }
-        ["bronze", "silver", "gold", "platinum"].forEach(function(tier) {
-          doc.$('plan-' + tier).innerHTML = planRepr[tier];
-        });
-        if (submitted && isValidTerritory(territory)) {
-          hideError('sponsor-territory');
+      $email.addEventListener('input', function() {
+        if (submitted && isValidEmail($email.value)) {
+          hideError('sponsor-email');
         }
       });
     }
+    $territory.addEventListener('change', function() {
+      var territory = $territory.options[$territory.selectedIndex].value,
+          taxPrefix = TAX[territory],
+          planRepr = root.PLANS;
+      if (taxPrefix) {
+        if (taxPrefix == "GB") {
+          planRepr = root.PLANS_GB;
+        }
+        $taxID.value = taxPrefix;
+        $taxIDField.style.display = 'block';
+      } else {
+        $taxIDField.style.display = 'none';
+        $taxID.value = '';
+      }
+      ["bronze", "silver", "gold", "platinum"].forEach(function(tier) {
+        doc.$('plan-' + tier).innerHTML = planRepr[tier];
+      });
+      if (submitted && isValidTerritory(territory)) {
+        hideError('sponsor-territory');
+      }
+    });
+    $taxID.addEventListener('keypress', function() {
+      if (submitted) {
+        if (isValidTaxID(TAX[$territory.options[$territory.selectedIndex].value], $taxID.value)) {
+          hideError('sponsor-tax-id');
+        }
+      } else {
+        hideError('sponsor-tax-id');
+      }
+    });
+    $taxID.addEventListener('input', function() {
+      if (submitted) {
+        if (isValidTaxID(TAX[$territory.options[$territory.selectedIndex].value], $taxID.value)) {
+          hideError('sponsor-tax-id');
+        }
+      } else {
+        hideError('sponsor-tax-id');
+      }
+    });
     $number.addEventListener('keypress', function(e) {
       // Ignore browser shortcuts and special characters.
       if (e.metaKey || e.ctrlKey || e.which < 32) {
@@ -451,14 +478,19 @@ defpkg('app', function(exports, root) {
       submitted = true;
       submitting = true;
       errorElement = null;
-      isValidName($name.value);
       if (isUpdateForm) {
         if (number !== "" || expMonth !== "" || expYear !== "" || cvc !== "") {
           processCard = true;
         }
       } else {
+        isValidName($name.value);
         isValidEmail($email.value);
-        isValidTerritory($territory.options[$territory.selectedIndex].value);
+      }
+      var territory = $territory.options[$territory.selectedIndex].value,
+          taxPrefix = TAX[territory];
+      isValidTerritory(territory);
+      if (taxPrefix) {
+        isValidTaxID(taxPrefix, $taxID.value);
       }
       if (processCard) {
         isValidNumber(number);
