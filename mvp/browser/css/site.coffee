@@ -822,6 +822,7 @@ module.exports = (api) ->
       background: '#ecf0f1'
       height: '450px'
       position: 'relative'
+      userSelect: 'none'
 
     '.page-title':
       color: '#232d32'

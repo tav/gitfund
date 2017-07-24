@@ -2,11 +2,11 @@
 
 * We are building a sustainable solution to the [problem of funding open source projects][ford-report].
 
-* GitFund will make it easy for companies, who tend to be biggest beneficiaries of open source, to give back to the projects that they depend on.
+* GitFund will make it easy for companies, who tend to be the biggest beneficiaries of open source, to support the projects that they depend on.
 
 * Unlike most crowdfunding sites, who tend to take a 5% cut, we will be charging 0% platform fee so that projects will get as much of the money as possible.
 
-* We'll also be pretty unique in supporting distributed payouts, so that all collaborators can be paid directly on the platform from project funds.
+* Our unique model also supports distributed payouts so that multiple collaborators can be paid from project funds — all directly via the platform.
 
 * Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 75 sponsors to make this real! And, even at our highest tier, it's still less than the cost of a single senior dev at [many large tech firms].
 

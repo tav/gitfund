@@ -46,6 +46,9 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 <div class="header"><div class="inner">
 	<div class="navicon"><div></div></div>
 	<div class="navlinks">
+		% if ctx.name != 'tav':
+		<a href="/tav/gitfund">Home</a>
+		% endif
 		<a href="/site.sponsors">Sponsors</a>
 		<a href="/community">Slack/IRC Community</a>
 		% if ctx.user_id:
