@@ -239,6 +239,7 @@ Context.PLAN_SLOTS = PLAN_SLOTS
 Context.PLAN_DESCRIPTIONS = PLAN_DESCRIPTIONS
 Context.STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY
 Context.TERRITORIES = TERRITORIES
+Context.TERRITORY2TAX = TERRITORY2TAX
 
 Context.current_year = staticmethod(current_year)
 Context.get_site_sponsors = staticmethod(get_site_sponsors)
@@ -1247,7 +1248,7 @@ def sponsor_gitfund(
     ctx.page_title = "Sponsor GitFund!"
     ctx.stripe_js = True
     kwargs = {
-        'card': '',
+        'card': card,
         'email': email,
         'name': name,
         'plan': plan,
@@ -1279,12 +1280,12 @@ def sponsor_gitfund(
         else:
             kwargs['error'] = msg
         return kwargs
-    name = name.strip()
-    if not name:
-        return error("Please specify the sponsor name.")
-    if len(name.encode('utf-8')) > 60:
-        return error("The sponsor name must be less than 60 bytes long.")
     if not user:
+        name = name.strip()
+        if not name:
+            return error("Please specify your name.")
+        if len(name.encode('utf-8')) > 60:
+            return error("Your name must be less than 60 bytes long.")
         email = email.strip()
         if not email:
             return error("Please provide your email address.")
@@ -1339,6 +1340,7 @@ def sponsor_gitfund(
         ctx._user_id = user_id
         ctx._user = user
         ctx.set_secure_cookie('auth', str(user_id))
+        kwargs['exists'] = True
     # Create a Stripe Customer record if it doesn't exist.
     if user.stripe_customer_id:
         cus_exists = True
@@ -1360,6 +1362,7 @@ def sponsor_gitfund(
     # Ensure card token exists where customer hasn't already been created.
     if (not cus_exists) and (not card):
         return error("Please enable JavaScript before filling in your card details.")
+    new_card = False
     if card:
         # Retrieve the existing customer if it already exists.
         if cus_exists:
@@ -1372,6 +1375,7 @@ def sponsor_gitfund(
         try:
             customer.default_source = customer.sources.create(source=card).id # COST(1)
             customer.save() # COST(1)
+            new_card = True
         except stripe.error.CardError as e:
             logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
             return error("Sorry, there was an error processing your payment: %s" % e.json_body['error']['message'])
@@ -1388,7 +1392,6 @@ def sponsor_gitfund(
     # Set up or update sponsorship.
     def txn():
         user = User.get_by_id(user_id)
-        user.name = name
         user.sponsor_type = 'stripe'
         first_time = False
         if not user.sponsor:
@@ -1405,9 +1408,12 @@ def sponsor_gitfund(
             user.totals_need_syncing = True
             user.totals_version += 1
         if existing_stripe_plan != new_stripe_plan:
-            user.stripe_needs_cancelling.append(user.stripe_subscription)
+            if user.stripe_subscription:
+                user.stripe_needs_cancelling.append(user.stripe_subscription)
             user.stripe_needs_updating = True
             user.stripe_subscription = ''
+            user.stripe_update_version += 1
+        elif new_card and not user.stripe_subscription:
             user.stripe_update_version += 1
         if tax_id:
             user.tax_id = tax_id
@@ -1433,7 +1439,7 @@ def sponsor_gitfund(
     if err:
         return error(err[0])
     delete_cache('sponsors')
-    if (not user.link_text) or (not user.link_url):
+    if (not user.link_text) and (not user.link_url):
         raise Redirect('/update.sponsor.profile?setup=1')
     return {'updated': True}
 
