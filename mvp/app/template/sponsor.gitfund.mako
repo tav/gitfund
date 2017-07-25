@@ -5,6 +5,8 @@
 <div class="alert-red">${error|h}</div>
 % elif error_html:
 <div class="alert-red">${error_html}</div>
+% elif ctx.preview_mode:
+<div class="alert-red">Currently in testing mode. Use the demo card number `4242 4242 4242 4242` with any 3-digit security code and a future expiry date for testing purposes.</div>
 % endif
 <div class="inner content">
 	<div class="notice">
@@ -36,8 +38,14 @@
 			<label for="sponsor-plan">Sponsorship Tier</label>
 			<div class="field-data">
 				<div class="select-box"><select id="sponsor-plan" name="plan">
+					<%
+						_price_plans = ctx.PLANS
+						if territory in ctx.TERRITORY2TAX:
+							if ctx.TERRITORY2TAX[territory] == "GB":
+								_price_plans = ctx.PLANS_GB
+					%>
 					% for tier in ['bronze', 'silver', 'gold', 'platinum']:
-					<option${plan == tier and ' selected' or ''} value="${tier}" id="plan-${tier}">${ctx.PLANS[tier]}</option>
+					<option${plan == tier and ' selected' or ''} value="${tier}" id="plan-${tier}">${_price_plans[tier]}</option>
 					% endfor
 				</select></div>
 			</div>

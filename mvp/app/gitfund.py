@@ -905,9 +905,9 @@ def sync_sponsor(ctx, user, first_time=False):
             def txn(tax_id):
                 user = User.get_by_id(user_id)
                 if not user.tax_id_to_validate:
-                    return
+                    return user
                 if user.tax_id != tax_id:
-                    return
+                    return user
                 if is_invalid:
                     user.tax_id_detailed = ''
                     user.tax_id_is_invalid = True
@@ -916,7 +916,8 @@ def sync_sponsor(ctx, user, first_time=False):
                     user.tax_id_is_invalid = False
                 user.tax_id_to_validate = False
                 user.put()
-            run_in_transaction(txn, user.tax_id)
+                return user
+            user = run_in_transaction(txn, user.tax_id)
         if _err:
             err.append(_err)
     # Check if the subscription is past_due or has been cancelled.
@@ -1036,7 +1037,7 @@ def auth(ctx, token=None, return_to=None):
         raise NotFound
     if return_to not in AUTH_HANDLERS:
         raise NotFound
-    user_id = validate_tamper_proof_string('authtoken', token, HMAC_KEY)
+    user_id = validate_tamper_proof_string('authtoken', token, HMAC_KEY, True)
     if not user_id:
         return "<h1>Sorry, this auth link has expired.</h1>"
     ctx.set_secure_cookie('auth', user_id)
@@ -1138,10 +1139,11 @@ def cron_twitter(ctx):
     return 'OK'
 
 @handle(['login', 'site'])
-def login(ctx, return_to='manage.sponsorship', email='', existing=False, xsrf=None):
+def login(ctx, return_to='', email='', existing=False, xsrf=None):
     ctx.page_title = "Log in to GitFund"
-    if return_to not in AUTH_HANDLERS:
-        raise NotFound
+    if return_to:
+        if return_to not in AUTH_HANDLERS:
+            raise NotFound
     if xsrf is None:
         return {'return_to': return_to, 'email': email, 'existing': existing}
     ctx.validate_xsrf(xsrf)
@@ -1160,9 +1162,14 @@ def login(ctx, return_to='manage.sponsorship', email='', existing=False, xsrf=No
         }
     user_id = str(user.key().id())
     token = create_tamper_proof_string('authtoken', user_id, HMAC_KEY, 86400)
+    if return_to:
+        intent = return_to.split('.')
+        intent_button = ' '.join(part.title() for part in intent)
+    else:
+        intent = ['log in into', 'account']
+        intent_button = 'Login Link'
+        return_to = 'manage.sponsorship'
     authlink = ctx.compute_url('auth', token, return_to)
-    intent = return_to.split('.')
-    intent_button = ' '.join(part.title() for part in intent)
     err = ctx.send_email(
         intent_button, user.name, user.email, 'authlink',
         authlink=authlink, intent=intent, intent_button=intent_button
@@ -1247,6 +1254,8 @@ def sponsor_gitfund(
     ):
     ctx.page_title = "Sponsor GitFund!"
     ctx.stripe_js = True
+    if not LIVE:
+        ctx.preview_mode = True
     kwargs = {
         'card': card,
         'email': email,
@@ -1297,32 +1306,35 @@ def sponsor_gitfund(
         return error("Please select your country.")
     if territory in TERRITORY2TAX:
         tax_id = tax_id.strip()
-        if (not tax_id) or (len(tax_id) < 4):
-            return error("Please provide your VAT ID.")
         tax_prefix = TERRITORY2TAX[territory][0]
-        if tax_id[:2].upper() != tax_prefix:
-            return error("Please provide a VAT ID for the selected country.")
-        if user and user.tax_id == tax_id:
-            if user.tax_id_to_validate:
-                validate = True
-            elif user.tax_id_is_invalid:
-                return error(INVALID_VAT_ID)
-            else:
-                tax_info = user.tax_id_detailed
-                validate = False
+        if tax_prefix == 'GB' and ((not tax_id) or (tax_id == 'GB')):
+            tax_id = ''
         else:
-            validate = True
-        if validate:
-            tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
-            if is_invalid:
-                return error(INVALID_VAT_ID)
+            if (not tax_id) or (len(tax_id) < 4):
+                return error("Please provide your VAT ID.")
+            if tax_id[:2].upper() != tax_prefix:
+                return error("Please provide a VAT ID for the selected country.")
+            if user and user.tax_id == tax_id:
+                if user.tax_id_to_validate:
+                    validate = True
+                elif user.tax_id_is_invalid:
+                    return error(INVALID_VAT_ID)
+                else:
+                    tax_info = user.tax_id_detailed
+                    validate = False
+            else:
+                validate = True
+            if validate:
+                tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
+                if is_invalid:
+                    return error(INVALID_VAT_ID)
     else:
         tax_id = ''
     kwargs['card'] = ''
     card = card.strip()
     # Check if we already have a Sponsor record for the given email address.
     def existing_sponsor():
-        link = ctx.compute_url("login", "sponsor.gitfund")
+        link = ctx.compute_url("login", "sponsor.gitfund", email=email, existing=1)
         return error(
             'There is already an active sponsorship set up for %s. Please <a href="%s">sign in</a> to update your sponsorship details.'
             % (escape(email), link), html=True
@@ -1478,10 +1490,9 @@ def stripe_webhook(ctx, token, **kwargs):
     return 'OK'
 
 @handle(['project', 'site'])
-def tav(ctx, project='', **kwargs):
+def tav(ctx, project='', thanks=None, **kwargs):
     if project != 'gitfund':
         raise NotFound
-    # TODO(tav): Remove preview_mode when GitFund is about to be announced.
     ctx.preview_mode = True
     ctx.show_sponsors_footer = True
     ctx.site_description = CAMPAIGN_DESCRIPTION
@@ -1491,6 +1502,7 @@ def tav(ctx, project='', **kwargs):
     return {
         'social': get_local('social.profiles'),
         'totals': get_local('totals'),
+        'thanks': thanks,
     }
 
 @handle(['update.sponsor.profile', 'site'], anon=False)
@@ -1556,13 +1568,9 @@ def update_sponsor_profile(
         "link_url": link_url,
         "user_id": ctx.user_id,
     })
-    user = run_in_transaction(txn)
+    run_in_transaction(txn)
     delete_cache('sponsors')
-    return {
-        'link_text': user.get_link_text(),
-        'link_url': user.link_url,
-        'updated': True,
-    }
+    raise Redirect('/tav/gitfund?thanks=1')
 
 @handle(['users.list', 'site'])
 def users_list(ctx, cursor=None):
@@ -1648,7 +1656,13 @@ if not LIVE:
 # Init Local State
 # ------------------------------------------------------------------------------
 
-Context.CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md'))
+MORE_BLOCK_LINK = '<a class="more-link" id="more-link" href="">Read more</a>'
+
+Context.CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md')).replace(
+    '<p>MORE-BLOCK-LINK</p>', MORE_BLOCK_LINK).replace(
+    '<p>MORE-BLOCK-START</p>', '<div class="more-block">').replace(
+    '<p>MORE-BLOCK-END</p>', '</div>')
+
 Context.CAMPAIGN_GOAL = render_markdown(CAMPAIGN_GOAL)
 
 def init_state():

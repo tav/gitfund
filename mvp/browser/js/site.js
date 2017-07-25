@@ -63,6 +63,7 @@ defpkg('app', function(exports, root) {
 
   function initApp() {
     FastClick.attach(body);
+    initMoreLink();
     initToggler();
     initComments();
     initParticles();
@@ -96,6 +97,20 @@ defpkg('app', function(exports, root) {
     s.setAttribute('data-timestamp', +new Date());
     (doc.head || doc.body).appendChild(s);
     insertScript('https://gitfund.disqus.com/count-data.js?1=' + encodeURIComponent($disqusCount.getAttribute('data-disqus-identifier')) + "&ts=" + +new Date, false);
+  }
+
+  function initMoreLink() {
+    var link = doc.$('more-link');
+    if (!link) {
+      return;
+    }
+    bindClick($('comment-link'), function(e) {
+      addClass($('comments-container'), 'more-show');
+    });
+    bindClick(link, function(e) {
+      addClass($('campaign-inner'), 'more-show');
+      e.preventDefault();
+    });
   }
 
   function initParticles() {
@@ -316,6 +331,12 @@ defpkg('app', function(exports, root) {
       }
     };
     var isValidTaxID = function(taxPrefix, taxID) {
+      if (taxPrefix === "GB") {
+        var trimmed = trim(taxID);
+        if (trimmed === "" || trimmed === "GB") {
+          return true;
+        }
+      }
       if (taxID.length <= 4 || taxID.substring(0, 2).toUpperCase() != taxPrefix) {
         showError('sponsor-tax-id', "Invalid VAT ID.")
       } else {

@@ -10,6 +10,10 @@
 
 * Get your company [to sponsor GitFund](/sponsor.gitfund). We only need 75 sponsors to make this real! And, even at our highest tier, it's still less than the cost of a single senior dev at [many large tech firms].
 
+MORE-BLOCK-LINK
+
+MORE-BLOCK-START
+
 ### Why GitFund?
 
 Open source is everywhere. From healthcare to education, scrappy startups to billion dollar giants, much of the software that runs our society is built using open source tools.
@@ -253,6 +257,8 @@ In closing, [please sponsor GitFund][sponsor] if you can, or get your company to
 And do leave a comment if you like the idea of GitFund. It will be great to hear about any features you'd like to see, if you'd like to collaborate, or have your project be part of the Beta launch.
 
 — Cheers, tav
+
+MORE-BLOCK-END
 
 [adsense]: https://www.google.co.uk/adsense/start/how-it-works/
 [asciicasts]: https://asciinema.org/

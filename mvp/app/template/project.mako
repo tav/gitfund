@@ -8,7 +8,9 @@
 </div>
 <div class="clear"></div>
 <div class="campaign-cols"><div class="campaign-inner">
-	% if ctx.preview_mode:
+	% if thanks:
+	<div class="alert-green">Your sponsor profile has been updated. Thank you for your support!</div>
+	% elif ctx.preview_mode:
 	<div class="preview-warn">This is for preview only. Please do not share publicly. Thank you.</div>
 	% endif
 	<div class="project-title inner-pad-only">${ctx.CAMPAIGN_TITLE|h}</div>
@@ -23,7 +25,7 @@
 		<div class="campaign-box campaign-content content inner-pad-only">
 			${ctx.CAMPAIGN_CONTENT}
 		</div>
-		<div class="inner-pad-only"><div class="disqus">
+		<div class="inner-pad-only comments-container"><div class="disqus more-block">
 			<div id="disqus_thread"></div>
 		</div></div>
 	</div>
@@ -40,7 +42,6 @@
 			</div>
 		</div>
 		<div class="campaign-box">
-			<div class="campaign-box-title">SPONSOR</div>
 			<div class="campaign-box-inner">
 			% for idx, plan in enumerate(['bronze', 'silver', 'gold', 'platinum']):
 				<%

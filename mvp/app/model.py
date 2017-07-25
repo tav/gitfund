@@ -87,7 +87,6 @@ class U(db.Model): # key=<auto>
     link_text = db.StringProperty(default='', indexed=False)
     link_url = db.StringProperty(default='', indexed=False)
     name = db.StringProperty(default='', indexed=False)
-    needs_syncing = db.BooleanProperty(default=False)
     plan = db.StringProperty(default='')
     sponsor = db.BooleanProperty(default=False)
     sponsor_type = db.StringProperty(default='')                     # 'stripe' | 'manual'

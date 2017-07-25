@@ -293,6 +293,24 @@ module.exports = (api) ->
 
     '.campaign-cols':
       marginTop: '20px'
+      '.more-show':
+        '.more-block':
+          display: 'block !important'
+        '.more-link':
+          display: 'none !important'
+        '.campaign-content.campaign-box':
+          marginBottom: '20px !important'
+      '.campaign-content.campaign-box':
+        '@media all and (max-width: 922px)':
+          marginBottom: '0px'
+      '.more-block':
+        display: 'block'
+        '@media all and (max-width: 922px)':
+          display: 'none'
+      '.more-link':
+        display: 'none'
+        '@media all and (max-width: 922px)':
+          display: 'block'
 
     '.campaign-col1':
       float: 'left'
