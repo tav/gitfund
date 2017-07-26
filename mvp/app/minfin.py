@@ -3,6 +3,8 @@
 
 from decimal import Decimal
 
+CAMPAIGN_TARGET = Decimal(60000)
+
 # -----------------------------------------------------------------------------
 # Tax ID Handlers
 # -----------------------------------------------------------------------------
@@ -71,14 +73,20 @@ TERRITORY2TAX = {
 # -----------------------------------------------------------------------------
 
 PLAN_AMOUNTS = {
-    'bronze': 1000,
-    'silver': 2000,
-    'gold': 4000,
-    'platinum': 8000
+    'donor': 12,
+    'bronze': 1500,
+    'silver': 3000,
+    'gold': 6000,
+    'platinum': 12000
 }
 
 PLAN_AMOUNTS_GB = {
-  plan: int(amount * 1.2)
+  plan: (plan == 'donor' and amount or int(amount * 1.2))
+  for plan, amount in PLAN_AMOUNTS.iteritems()
+}
+
+PLAN_FACTORS = {
+  plan: amount / CAMPAIGN_TARGET
   for plan, amount in PLAN_AMOUNTS.iteritems()
 }
 
@@ -91,20 +99,10 @@ PLAN_SLOTS = {
 
 PLAN_VERSION = 1
 
-def _gen_plan_factors():
-    factors = {}
-    plans = PLAN_AMOUNTS.keys()
-    total = 0
-    for plan in plans:
-        total += PLAN_AMOUNTS[plan] * PLAN_SLOTS[plan]
-    total = Decimal(total)
-    for plan in plans:
-        factors[plan] = Decimal(PLAN_AMOUNTS[plan]) / total
-    return factors, int(total)
-
-PLAN_FACTORS, PLAN_TOTAL = _gen_plan_factors()
-
 if __name__ == '__main__':
-    for spec in [PLAN_AMOUNTS, PLAN_AMOUNTS_GB]:
+    for id, spec in [('std', PLAN_AMOUNTS), ('gb', PLAN_AMOUNTS_GB)]:
+        print "%s:" % id
         for plan, amount in sorted(spec.items(), key=lambda x: x[1]):
-            print "%12s\t%s" % (plan, PLAN_SLOTS[plan] * amount)
+            if plan in PLAN_SLOTS:
+                print "%12s\t%s" % (plan, PLAN_SLOTS[plan] * amount)
+        print
