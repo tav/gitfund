@@ -59,7 +59,7 @@ available any such Content:
   right to sublicense, to use, view, copy, adapt, translate, modify, prepare
   derivative works of, distribute, license, sell, transfer, display, perform,
   transmit, and otherwise fully exploit ("**Use**") the Content in connection
-  with GitFund and Espian's (and its successors and assigns) business, including
+  with GitFund and Espians' (and its successors and assigns) business, including
   without limitation for promoting and delivering GitFund in any media format
   and through any media channel (including, without limitation, third party
   websites).
@@ -86,20 +86,20 @@ at our sole discretion to be unlawful, offensive, threatening, libelous,
 defamatory, pornographic, obscene or otherwise objectionable or violates any
 party's intellectual property or these Terms of Service.
 
-### Sponsorship
+### Backing Projects
 
-By sponsoring a project on GitFund, you are giving us permission to charge you
-on a monthly recurring basis through any payment methods that you have
-authorised, until your sponsorship is cancelled.
+By backing a project on GitFund, as either a donor or a sponsor, you are giving
+us permission to charge you on a monthly recurring basis through any payment
+methods that you have authorised, until your backing is cancelled.
 
-Sponsorship of a project does not give you any right or control over the project
-that you are sponsoring.
+Backing a project does not give you any rights or control over that project.
 
 ### Sponsor Profile
 
-As a sponsor, your sponsorship link text, link URL, and image (your "**Sponsor
-Profile**"), will be displayed at random as part of the "Sponsored By" widgets.
-Your Sponsor Profile must satisfy the following conditions:
+If you back a project as a sponsor, your sponsorship link text, link URL, and
+image (your "**Sponsor Profile**"), will be displayed at random as part of the
+"Sponsored By" widgets. Your Sponsor Profile must satisfy the following
+conditions:
 
 * If you are sponsoring as an individual, then:
 
@@ -237,7 +237,7 @@ periodically for any such changes.
 Your continued use of GitFund after any change in these Terms of Service will
 constitute your acceptance of such change.
 
-*This document was [last updated][revisions] on 2017-05-20.*
+*This document was [last updated][revisions] on 2017-07-26.*
 
 [Privacy Policy]: /site/privacy
 [revisions]: https://github.com/tav/gitfund/commits/master/mvp/app/page/terms.md
