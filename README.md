@@ -21,9 +21,10 @@ You can join the community via either our [Slack channel] or IRC:
 Both channels are connected by a relay bot, so you won't be missing out on any  
 discussions by choosing one over the other.
 
-### Our Sponsors
+### Our Backers
 
-A big thanks to our [wonderful sponsors](https://gitfund.io/site.sponsors):
+A big thanks to our [wonderful donors](https://gitfund.io/site.donors) and
+[sponsors](https://gitfund.io/site.sponsors):
 
 <p>
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -36,9 +37,7 @@ A big thanks to our [wonderful sponsors](https://gitfund.io/site.sponsors):
   <img src="https://gitfund.io/readme.image/bronze" height="150px">
 </p>
 
-Support this project:
-
-* [Become a sponsor!](https://gitfund.io/sponsor.gitfund)
+[Help out by backing GitFund today!](https://gitfund.io/back.gitfund)
 
 ### Contribute
 
