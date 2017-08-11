@@ -12,7 +12,7 @@
 			<td class="constrained-width">${user.name|h}</td>
 			<td class="constrained-width"><a href="mailto:${user.email|h}">${user.email|h}</a></td>
 			<td class="constrained-width">
-			% if user.link_text:
+			% if user.sponsor and user.link_text:
 				% if user.link_url:
 				<a href="${user.link_url|h}">${user.link_text}</a>
 				% else:

@@ -46,10 +46,14 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 <div class="header"><div class="inner">
 	<div class="navicon"><div></div></div>
 	<div class="navlinks">
-		% if ctx.name != 'tav':
-		<a href="/tav/gitfund">Home</a>
+		% if not ctx.user_id:
+			% if ctx.name != 'tav':
+			<a href="/tav/gitfund">Home</a>
+			% endif
+			<a href="/back.gitfund">Back GitFund</a>
 		% endif
 		<a href="/site.sponsors">Sponsors</a>
+		<a href="/site.donors">Donors</a>
 		<a href="/community">Slack/IRC Community</a>
 		% if ctx.user_id:
 		<a href="/manage.sponsorship">Manage Sponsorship</a>
@@ -101,8 +105,10 @@ ${content}
 	<li><a href="/site/about">About Us</a></li>
 	<li><a href="/site/press">Press</a></li>
 	<li><a href="/site.sponsors">Our Sponsors</a></li>
+	<li><a href="/site.donors">Our Donors</a></li>
 	<li><a href="/community">Slack/IRC Community</a></li>
-	<li><a href="/sponsor.gitfund">Sponsor GitFund</a></li>
+	<li><a href="/site/ambassadors">Become an Ambassador</a></li>
+	<li><a href="/back.gitfund">Back GitFund</a></li>
 </ul>
 <ul>
 	<li>Support</li>

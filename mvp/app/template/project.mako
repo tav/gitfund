@@ -1,15 +1,19 @@
 <div class="campaign">
 <div class="campaign-header">
 	<div class="campaign-banner"><div class="inner">
-		<div class="info"><a href="/site.sponsors"><strong>${"{:,}".format(totals.sponsors)}</strong> ${ctx.pluralise('sponsor', totals.sponsors)}</a></div>
-		<div class="info"><a href="/site.sponsors"><strong>£${"{:,}".format(totals.raised)}</strong> per month</a></div>
-		<a class="sponsor" href="/sponsor.gitfund">Back This Project</a>
+		<div class="info"><strong>${"{:,}".format(totals.sponsors)}</strong> ${ctx.pluralise('sponsor', totals.sponsors)}</div>
+		<div class="info"><strong>£${"{:,}".format(totals.raised)}</strong> per month</div>
+		<a class="sponsor" href="/back.gitfund">Back This Project</a>
 	</div></div>
 </div>
 <div class="clear"></div>
 <div class="campaign-cols"><div class="campaign-inner">
 	% if thanks:
+	% if thanks == 'sponsor':
 	<div class="alert-green">Your sponsor profile has been updated. Thank you for your support!</div>
+	% else:
+	<div class="alert-green">Thank you for your support!</div>
+	% endif
 	% elif ctx.preview_mode:
 	<div class="preview-warn">This is for preview only. Please do not share publicly. Thank you.</div>
 	% endif
@@ -25,9 +29,6 @@
 		<div class="campaign-box campaign-content content inner-pad-only">
 			${ctx.CAMPAIGN_CONTENT}
 		</div>
-		<div class="inner-pad-only comments-container"><div class="disqus more-block">
-			<div id="disqus_thread"></div>
-		</div></div>
 	</div>
 	<div class="campaign-col2">
 		<div class="campaign-box">
@@ -37,7 +38,6 @@
 				% if totals.progress:
 				<div class="goal-status">${totals.progress}</div>
 				% endif
-				<div class="content">${ctx.CAMPAIGN_GOAL}</div>
 			</div>
 			</div>
 		</div>
@@ -58,7 +58,7 @@
 				<div class="backing-plan-title">${plan_title} Sponsorship</div>
 				<div class="backing-plan-backers">${remaining}, ${ctx.format_currency(ctx.PLAN_AMOUNTS[plan])}/month</div>
 				<div class="backing-plan-desc content">${ctx.PLAN_DESCRIPTIONS[plan]}</div>
-				<div class="backing-plan-select${plan != 'platinum' and ' campaign-box-divider' or ''}${(not slots_available) and ' backing-plan-disabled' or ''}"><a href="/sponsor.gitfund?plan=${plan}">
+				<div class="backing-plan-select${plan != 'platinum' and ' campaign-box-divider' or ''}${(not slots_available) and ' backing-plan-disabled' or ''}"><a href="/back.gitfund?plan=${plan}">
 				% if slots_available:
 					Become a ${plan_title} Sponsor
 				% else:
@@ -79,11 +79,10 @@
 				<div class="team-profile-name">${profile.name|h}</div>
 				% if profile.main == 'twitter':
 				<div class="team-profile-image"><img src="${twitter.avatar.replace('_normal', '')}"></div>
-				<div class="team-profile-bio content">${ctx.linkify_twitter_bio(twitter.description)}</div>
 				% elif profile.main == 'github':
 				<div class="team-profile-image"><img src="${github.avatar}"></div>
-				<div class="team-profile-bio content">${ctx.linkify_github_bio(github.description)}</div>
 				% endif
+				<div class="team-profile-bio">${profile.role|h}</div>
 				<div class="team-profile-follow${idx != (len(ctx.CAMPAIGN_TEAM) - 1) and ' campaign-box-divider' or ''}">
 				% if profile.twitter:
 					<a href="https://twitter.com/intent/follow?screen_name=${profile.twitter}"><span class="team-profile-icon team-profile-twitter"></span><span class="team-profile-follow-username">Follow @${profile.twitter}</span><span class="team-profile-follow-count">${format(twitter.followers, ",d")} followers</span></a>
@@ -99,6 +98,14 @@
 			</div>
 		</div>
 		<div class="campaign-box">
+			<div class="campaign-box-title">WANT TO HELP?</div>
+			<div class="campaign-box-inner-sides">
+				<div class="ambassador-button">
+					<a href="/site/ambassadors">Become an Ambassador!</a>
+				</div>
+			</div>
+		</div>
+		<div class="campaign-box">
 			<div class="campaign-box-title">SHARE</div>
 			<div class="campaign-box-inner-sides">
 				<a class="share share-facebook" href="https://facebook.com/sharer/sharer.php?${ctx.urlencode({'u': 'https://gitfund.io/tav/gitfund'})}"><div>Share on Facebook</div></a>
@@ -108,6 +115,11 @@
 		</div>
 	</div>
 	<div class="fix-layout">&nbsp;</div>
+	<div class="campaign-col1">
+		<div class="inner-pad-only"><div class="disqus">
+			<div id="disqus_thread"></div>
+		</div></div>
+	</div>
 </div></div>
 <div class="clear"></div>
 </div>

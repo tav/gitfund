@@ -1,5 +1,5 @@
 % if updated:
-<div class="alert-green">Thank you. Your sponsorship details have been updated.</div>
+<div class="alert-green">Thank you. Your details have been updated.</div>
 % else:
 % if error:
 <div class="alert-red">${error|h}</div>
@@ -13,11 +13,10 @@
 	% if exists_plan:
 		Update Billing Details
 	% else:
-		Thank you for supporting GitFund.
-		Your sponsorship will help make a real difference.
+		Back GitFund
 	% endif
 	</div>
-	<form action="/sponsor.gitfund" method="POST" id="sponsor-form" class="dataform">
+	<form action="/back.gitfund" method="POST" id="sponsor-form" class="dataform">
 		% if not exists:
 		<div class="field">
 			<label for="sponsor-name">Your Name</label>
@@ -35,13 +34,13 @@
 		</div>
 		% endif
 		<div class="field">
-			<label for="sponsor-plan">Sponsorship Tier</label>
+			<label for="sponsor-plan">Support Tier</label>
 			<div class="field-data">
 				<div class="select-box"><select id="sponsor-plan" name="plan">
 					<%
 						_price_plans = ctx.PLANS
 						if territory in ctx.TERRITORY2TAX:
-							if ctx.TERRITORY2TAX[territory] == "GB":
+							if ctx.TERRITORY2TAX[territory][0] == "GB":
 								_price_plans = ctx.PLANS_GB
 					%>
 					% for tier in ['bronze', 'silver', 'gold', 'platinum']:
@@ -110,7 +109,7 @@
 				</select></div>
 				<div class="select-box"><select id="card-exp-year">
 					<option value="">YY</option>
-					<% 
+					<%
 						from datetime import datetime
 						year_start = datetime.utcnow().year - 2000
 					%>
@@ -135,11 +134,10 @@
 			% if exists_plan:
 			<input type="submit" value="Update Billing Details">
 			% else:
-			<p>By confirming your monthly sponsorship, you are agreeing to <a href="/site/terms">GitFund's Terms of Service</a> and <a href="/site/privacy">Privacy Policy</a>.</p>
-			<input type="submit" value="Confirm Monthly Sponsorship">
+			<p>By confirming your monthly <span id="submit-confirm">${plan == 'donor' and 'donation' or 'sponsorship'}</span>, you are agreeing to <a href="/site/terms">GitFund's Terms of Service</a> and <a href="/site/privacy">Privacy Policy</a>.</p>
+			<input type="submit" id="submit" value="Confirm Monthly ${plan == 'donor' and 'Donation' or 'Sponsorship'}">
 			% endif
 		</div>
 	</form>
 </div>
-<script>${ctx.FINANCE_JS}</script>
 % endif

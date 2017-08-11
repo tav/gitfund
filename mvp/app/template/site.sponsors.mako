@@ -1,7 +1,7 @@
 <div class="inner"><div class="content">
 <div class="notice-sponsors">
-	GitFund is made possible thanks to the support of our generous sponsors.
-	<a href="/sponsor.gitfund">Become a sponsor today</a>.
+	GitFund is made possible thanks to the support of our generous donors and sponsors.
+	<a href="/back.gitfund?plan=bronze">Become a sponsor today</a>.
 </div>
 % for tier in ['platinum', 'gold', 'silver', 'bronze']:
 <% tier_sponsors = sponsors[tier] %>
