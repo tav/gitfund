@@ -15,5 +15,16 @@ indexes:
 
 - kind: U
   properties:
+  - name: backer
+  - name: sponsor
+  - name: backing_started
+
+- kind: U
+  properties:
   - name: sponsor
   - name: sponsorship_started
+
+- kind: U
+  properties:
+  - name: sponsor
+  - name: backing_started
