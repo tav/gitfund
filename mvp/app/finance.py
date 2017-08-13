@@ -1,19 +1,37 @@
 # Public Domain (-) 2016-2017 The GitFund Authors.
 # See the GitFund UNLICENSE file for details.
 
-from datetime import datetime
 from decimal import Decimal
 
 # -----------------------------------------------------------------------------
 # Globals
 # -----------------------------------------------------------------------------
 
+CAMPAIGN_TARGET_FACTOR = Decimal(5000)
+
+CONTENT_FACTORS = {
+    'example-gold': 250,
+    'example-silver': 50,
+    'example-bronze': 5,
+    'hosting': 400
+}
+
+PLAN_FACTORS = {
+    'donor': 1,
+    'bronze': 125,
+    'silver': 250,
+    'gold': 500,
+    'platinum': 1000
+}
+
 PLAN_SLOTS = {
-    'bronze': 500,
-    'silver': 100,
+    'bronze': 40,
+    'silver': 20,
     'gold': 10,
     'platinum': 5
 }
+
+PLAN_VERSION = 1
 
 # From:
 # https://support.stripe.com/questions/which-zero-decimal-currencies-does-stripe-support
@@ -23,24 +41,6 @@ ZERO_DECIMAL_CURRENCIES = frozenset([
 ])
 
 # -----------------------------------------------------------------------------
-# Derived Globals
-# -----------------------------------------------------------------------------
-
-def _gen_plan_factors():
-    factors = {}
-    num = float(PLAN_SLOTS['bronze'])
-    for plan, slots in PLAN_SLOTS.items():
-        factor = num / slots
-        factor_int = int(factor)
-        if factor != factor_int:
-            raise ValueError("Got decimal factor value for %s plans" % plan)
-        factors[plan] = factor_int
-    return factors
-
-
-PLAN_FACTORS = _gen_plan_factors()
-
-# -----------------------------------------------------------------------------
 # Plan Prices
 # -----------------------------------------------------------------------------
 
@@ -48,73 +48,69 @@ PLAN_FACTORS = _gen_plan_factors()
 # VAT), and for the top 60 territories based on Stack Overflow traffic:
 # https://www.quantcast.com/stackoverflow.com#/geographicCard
 #
-# Ignoring currencies which create amounts greater than the maximum chargeable
-# amount on Stripe of 99999999, e.g.
-#
-#     'CLP': [88000],
-#     'COP': [420000],
-#     'HUF': [36000],
-#     'IDR': [1800000],
-#     'IRR': [4000000],
-#     'LKR': [19000],
-#     'PKR': [13100],
-#     'RSD': [15000],
-#     'VND': [2800000],
-#
-# And currencies which are not supported on Stripe, e.g.
+# Ignoring currencies which are not supported on Stripe, e.g.
 #
 #     Bahraini Dinar (BHD), pegged at 1 USD == 0.376 BHD
 #     Belarusian Ruble (BYR)
 #     Bhutanese Ngultrum (BTN), pegged 1:1 to INR
+#     Iranian Rial (IRR)
 #     Kuwaiti Dinar (KWD), pegged to USD
 #     Manx Pound (IMP), pegged 1:1 to GBP
 #     Venezuelan Boliva (VEF)
 #
-# And currencies with major discrepancies between official and black market
-# rates, e.g.
-#
-#     Nigerian Naira (NGN)
+# To determine price, look at exchange rate against USD price for the last year,
+# including 2% Stripe fee for everything except GBP and EUR, take the high, and
+# then round to nearest digit for 2-digits, nearest ten for 3-digits, etc.
 #
 BASE_PRICES = {
-    'AED': [440],    # Pegged @ 1 USD == 3.6725 AED
-    'ARS': [2000],
-    'AUD': [180],
-    'BDT': [9900],
-    'BGN': [230],
-    'BRL': [500],
-    'CAD': [180],
-    'CHF': [130],
-    'CNY': [840],
-    'CZK': [3200],
-    'DKK': [860],
-    'EGP': [2400],
-    'EUR': [120],
-    'GBP': [100],
-    'HKD': [940],    # Pegged to USD
-    'HRK': [880],
-    'ILS': [480],
-    'INR': [8300],
-    'JPY': [15000],
-    'KRW': [150000],
-    'MAD': [1300],
-    'MXN': [2700],
-    'MYR': [540],
-    'NOK': [1080],
-    'NZD': [190],
-    'PEN': [420],
-    'PHP': [6100],
-    'PLN': [520],
-    'RON': [540],
-    'RUB': [9900],
-    'SAR': [450],    # Pegged @ 1 USD == 3.75 SAR
-    'SEK': [1200],
-    'SGD': [180],
-    'THB': [4400],
-    'TRY': [470],
-    'TWD': [4100],
-    'UAH': [3400],
-    'USD': [120],
-    'ZAR': [2100],
+    'AED': [45],    # Pegged @ 1 USD == 3.6725 AED
+    'ARS': [220],
+    'AUD': [18],
+    'BDT': [1100],
+    'BGN': [24],
+    'BRL': [44],
+    'CAD': [17],
+    'CHF': [13],
+    'CLP': [8400],
+    'COP': [39000],
+    'CNY': [86],
+    'CZK': [320],
+    'DKK': [88],
+    'EGP': [240],
+    'EUR': [12],
+    'GBP': [10],
+    'HKD': [96],    # Pegged to USD
+    'HRK': [89],
+    'HUF': [3700],
+    'IDR': [170000],
+    'ILS': [48],
+    'INR': [850],
+    'JPY': [1500],
+    'KRW': [15000],
+    'LKR': [1900],
+    'MAD': [125],
+    'MXN': [270],
+    'MYR': [56],
+    'NGN': [4500],
+    'NOK': [110],
+    'NZD': [18],
+    'PEN': [43],
+    'PHP': [630],
+    'PKR': [1400],
+    'PLN': [53],
+    'RON': [54],
+    'RSD': [1500],
+    'RUB': [820],
+    'SAR': [47],    # Pegged @ 1 USD == 3.75 SAR
+    'SEK': [120],
+    'SGD': [18],
+    'THB': [450],
+    'TRY': [48],
+    'TWD': [400],
+    'UAH': [340],
+    'USD': [12],
+    'VND': [280000],
+    'ZAR': [180],
 }
 
 # TODO(tav): Figure out what to do about currencies which are pegged to one of
@@ -149,13 +145,6 @@ del _pegged
 del _base_currency
 
 # -----------------------------------------------------------------------------
-# Tax Regimes
-# -----------------------------------------------------------------------------
-
-UK_VAT = 'uk'
-EU_VAT = 'eu'
-
-# -----------------------------------------------------------------------------
 # Tax ID Handlers
 # -----------------------------------------------------------------------------
 
@@ -170,132 +159,50 @@ def handle_belgian_vat_id(id):
     return id
 
 # -----------------------------------------------------------------------------
-# Tax Specs
+# Tax Spec
 # -----------------------------------------------------------------------------
-
-class TaxSpec(object):
-    def __init__(
-        self, type, rate, id_prefix='', normalize_id=None,
-        start=datetime(2000, 1, 1, 0, 0, 0),
-        ):
-        self.id_prefix = id_prefix
-        self.normalize_id = normalize_id
-        self.rate = Decimal(rate)
-        self.start = start
-        self.type = type
-
-def set_eu_vat(
-    territory, rate, normalize_id=None, id_prefix='',
-    start=datetime(2000, 1, 1, 0, 0, 0)
-    ):
-    if territory not in TERRITORY2TAX:
-        TERRITORY2TAX[territory] = []
-    if not id_prefix:
-        id_prefix = territory.split('-')[0]
-    TERRITORY2TAX[territory].append(TaxSpec(
-        EU_VAT, rate, id_prefix, normalize_id, start
-    ))
 
 TERRITORY2TAX = {
-    'GB': [TaxSpec(UK_VAT, '20', 'GB')],
+  'AT': ['AT', handle_austrian_vat_id],
+  'AT-JU': ['AT', handle_austrian_vat_id],
+  'AT-MI': ['AT', handle_austrian_vat_id],
+  'BE': ['BE', handle_belgian_vat_id],
+  'BG': ['BG', None],
+  'CY': ['CY', None],
+  'CZ': ['CZ', None],
+  'DE': ['DE', None],
+  'DK': ['DK', None],
+  'EE': ['EE', None],
+  'EL': ['EL', None],
+  'ES': ['ES', None],
+  'FI': ['FI', None],
+  'FR': ['FR', None],
+  'GB': ['GB', None],
+  'GR': ['GR', None],
+  'GR-81': ['GR', None],
+  'GR-82': ['GR', None],
+  'GR-83': ['GR', None],
+  'GR-84': ['GR', None],
+  'GR-85': ['GR', None],
+  'GR-NS': ['GR', None],
+  'GR-ST': ['GR', None],
+  'HR': ['HR', None],
+  'HU': ['HU', None],
+  'IE': ['IE', None],
+  'IM': ['GB', None],
+  'IT': ['IT', None],
+  'LT': ['LT', None],
+  'LU': ['LU', None],
+  'LV': ['LV', None],
+  'MC': ['FR', None],
+  'MT': ['MT', None],
+  'NL': ['NL', None],
+  'PL': ['PL', None],
+  'PT': ['PT', None],
+  'PT-20': ['PT', None],
+  'PT-30': ['PT', None],
+  'RO': ['RO', None],
+  'SE': ['SE', None],
+  'SI': ['SI', None],
+  'SK': ['SK', None],
 }
-
-# EU VAT rates are informed by:
-# http://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/vat/how_vat_works/rates/vat_rates_en.pdf
-#
-# Documents on the EU website contradict each other in relation to VAT rates in
-# certain territories, e.g.
-#
-# * The French Overseas Departments (DOM) are stated as not being part of
-#   Community territory for the purposes of VAT, but are also described as
-#   having a standard rate of 8.5% as being applicable. Is that local VAT or EU
-#   VAT?
-#
-set_eu_vat('AT', '20', handle_austrian_vat_id)
-set_eu_vat('AT-JU', '19', handle_austrian_vat_id)
-set_eu_vat('AT-MI', '19', handle_austrian_vat_id)
-set_eu_vat('BE', '21', handle_belgian_vat_id)
-set_eu_vat('BG', '20')
-set_eu_vat('CY', '19')
-set_eu_vat('CZ', '21')
-set_eu_vat('DE', '19')
-set_eu_vat('DK', '25')
-set_eu_vat('EE', '20')
-set_eu_vat('EL', '24')
-set_eu_vat('ES', '21')
-set_eu_vat('FI', '24')
-set_eu_vat('FR', '20')
-set_eu_vat('GR', '24')
-set_eu_vat('GR-83', '17')
-set_eu_vat('HR', '25')
-set_eu_vat('HU', '27')
-set_eu_vat('IE', '23')
-set_eu_vat('IT', '22')
-set_eu_vat('LT', '21')
-set_eu_vat('LU', '17')
-set_eu_vat('LV', '21')
-set_eu_vat('MT', '18')
-set_eu_vat('NL', '21')
-set_eu_vat('PL', '23')
-set_eu_vat('PT', '23')
-set_eu_vat('PT-20', '18')
-set_eu_vat('PT-30', '22')
-set_eu_vat('RO', '19')
-set_eu_vat('SE', '25')
-set_eu_vat('SI', '22')
-set_eu_vat('SK', '20')
-
-# Alias shared VAT domains.
-TERRITORY2TAX['GR-81'] = TERRITORY2TAX['GR-83']
-TERRITORY2TAX['GR-82'] = TERRITORY2TAX['GR-83']
-TERRITORY2TAX['GR-84'] = TERRITORY2TAX['GR-83']
-TERRITORY2TAX['GR-85'] = TERRITORY2TAX['GR-83']
-TERRITORY2TAX['GR-NS'] = TERRITORY2TAX['GR-83']
-TERRITORY2TAX['GR-ST'] = TERRITORY2TAX['GR-83']
-TERRITORY2TAX['IM'] = TERRITORY2TAX['GB']
-TERRITORY2TAX['MC'] = TERRITORY2TAX['FR']
-
-# -----------------------------------------------------------------------------
-# Misc. Globals
-# -----------------------------------------------------------------------------
-
-DISPLAY_WITH_TAX = frozenset([
-    UK_VAT
-])
-
-TAX_NOTICES = {
-    EU_VAT: "Please note that all amounts are exclusive of any applicable VAT.",
-    UK_VAT: "Please note that all amounts include %s%% VAT." % TERRITORY2TAX['GB'][-1].rate
-}
-
-# -----------------------------------------------------------------------------
-# Utility Functions
-# -----------------------------------------------------------------------------
-
-def get_tax_spec(territory, now):
-    if territory not in TERRITORY2TAX:
-        return
-    rates = TERRITORY2TAX[territory]
-    found = None
-    for rate in rates:
-        # TODO(tav): Should this take territory-specific time zones into
-        # consideration for when new rates come into force?
-        if now < rate.start:
-            break
-        found = rate
-    return found
-
-# -----------------------------------------------------------------------------
-# Minfin Generator
-# -----------------------------------------------------------------------------
-
-if __name__ == '__main__':
-    print "TERRITORY2TAX = {"
-    now = datetime.utcnow()
-    for territory in sorted(TERRITORY2TAX):
-        spec = get_tax_spec(territory, now)
-        func = spec.normalize_id
-        if func:
-            func = func.__name__
-        print "  '%s': ['%s', %s]," % (territory, spec.id_prefix, func)
-    print "}"
