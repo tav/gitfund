@@ -14,7 +14,6 @@ The countryInfo.txt file can be downloaded from:
 
 import sys
 
-from datetime import datetime
 from os import listdir
 from os.path import dirname, join, realpath
 
@@ -29,7 +28,7 @@ sys.path.append(join(dirname(dirname(realpath(__file__))), 'app'))
 
 from babel.core import get_global, Locale
 from babel.numbers import get_territory_currencies
-from finance import BASE_PRICES, EU_VAT, ZERO_DECIMAL_CURRENCIES, get_tax_spec
+from finance import BASE_PRICES, ZERO_DECIMAL_CURRENCIES
 from territories import TERRITORY_CODES
 
 DEBUG = False
@@ -115,12 +114,14 @@ TERRITORY_FORMATS = {
     'GL': ('', '\xa0¤'),
     'IL': ('¤\xa0', ''),
     'KR': ('', '¤'),
+    'LK': ('¤\xa0', ''),
     'MA': ('', '\xa0¤'),
     'NO': ('', '\xa0¤'),
     'PE': ('¤\xa0', ''),
     'SH-TA': ('¤\xa0', ''),
     'TH': ('', '\xa0¤'),
     'TR': ('', '\xa0¤'),
+    'VN': ('', '\xa0¤'),
 }
 
 TERRITORY_FORMATS['EH'] = TERRITORY_FORMATS['MA']
@@ -135,11 +136,13 @@ CURRENCY_SYMBOLS = {
     'BND': 'BN$',
     'BSD': 'BS$',
     'CAD': 'CA$',
+    'CLP': 'CL$',
     'COP': 'CO$',
     'DKK': 'kr.',
     'EGP': 'ج.م.',
     'HRK': 'kn',
     'KRW': '원',
+    'LKR': 'Rs',
     'LSL': 'M',
     'MAD': 'Dhs',
     'MXN': 'MX$',
@@ -148,6 +151,7 @@ CURRENCY_SYMBOLS = {
     'NZD': 'NZ$',
     'PEN': 'S/.',
     'RON': 'Lei',
+    'RSD': 'din',
     'RUB': 'руб.',
     'SAR': 'SR',
     'SEK': 'kr',   # ':-' for round amounts
@@ -321,11 +325,22 @@ for territory in sorted(TERRITORY_CODES):
         elif suffix and suffix != '\xa0¤':
             suffix = '\xa0¤'
 
-    prefix = prefix.replace('¤', currency_symbol)
-    suffix = suffix.replace('¤', currency_symbol)
+    cur_prefix = prefix.replace('¤', currency_symbol)
+    cur_suffix = suffix.replace('¤', currency_symbol)
+
+    if prefix and suffix:
+        exit("Currency format has both prefix and suffix for locale %r" % locale_str)
+
+    if prefix:
+        usd_prefix = 'US$\xa0'
+        usd_suffix = ''
+    else:
+        usd_prefix = ''
+        usd_suffix = '\xa0US$'
 
     TERRITORY2CURRENCY[territory] = (
-        currency, prefix, suffix, grouping, group_symbol, dec_symbol
+        currency, cur_prefix, cur_suffix, grouping, group_symbol, dec_symbol,
+        usd_prefix, usd_suffix
     )
 
 # Sanity check decimal places for currencies.
@@ -337,24 +352,10 @@ for currency in BASE_PRICES:
         continue
     if prec == 0:
         if currency not in ZERO_DECIMAL_CURRENCIES:
-            exit("Currency %r expects zero decimal places, but is not in ZERO_DECIMAL_CURRENCIES" % currency)
+            if DEBUG:
+                exit("Currency %r expects zero decimal places, but is not in ZERO_DECIMAL_CURRENCIES" % currency)
         continue
     exit("Currency %r expects %d decimal places" % (currency, prec))
-
-# Figure out, for VAT purposes, which EU territories are set to use a different
-# currency from the national one.
-ALTERNATE_EU_VAT_CURRENCY = {}
-now = datetime.utcnow()
-for territory in TERRITORY2CURRENCY:
-    tax = get_tax_spec(territory, now)
-    if not tax:
-        continue
-    if not tax.type == EU_VAT:
-        continue
-    using = TERRITORY2CURRENCY[territory][0]
-    expected = get_territory_currencies(territory.split('-')[0])[0]
-    if using != expected:
-        ALTERNATE_EU_VAT_CURRENCY[territory] = expected
 
 if DEBUG:
     for currency in sorted(SEEN_SYMBOLS):
@@ -373,16 +374,9 @@ from decimal import Decimal
 Format = namedtuple(
     'Format', [
         'currency', 'prefix', 'suffix', 'grouping', 'group_symbol',
-        'dec_symbol'
+        'dec_symbol', 'usd_prefix', 'usd_suffix'
     ]
 )
-
-ALTERNATE_EU_VAT_CURRENCY = {""")
-
-for territory in sorted(ALTERNATE_EU_VAT_CURRENCY):
-    print("    '%s': '%s'," % (territory, ALTERNATE_EU_VAT_CURRENCY[territory]))
-
-print("""}
 
 RTL_CURRENCIES = set([
     'EGP',
@@ -402,7 +396,7 @@ print("""}
 # Expects amount to be a string. If with_decimals is set to True, then the
 # amount needs to have been quantized to the appropriate decimal places.
 # Otherwise, it needs to be an integral value.
-def format(self, amount, with_decimals=False, as_html=True):
+def format(self, amount, with_decimals=False, as_html=True, usd=False):
     if isinstance(amount, Decimal):
         amount = str(amount)
     if with_decimals:
@@ -414,11 +408,15 @@ def format(self, amount, with_decimals=False, as_html=True):
         num = group_symbol + amount[-gsize:] + num
         amount = amount[:-gsize]
         gsize = ngsize
-    if with_decimals:
-        num = self.prefix + amount + num + self.dec_symbol + rem + self.suffix
+    if usd and self.currency != 'USD':
+        prefix, suffix = self.usd_prefix, self.usd_suffix
     else:
-        num = self.prefix + amount + num + self.suffix
-    if as_html and self.currency in RTL_CURRENCIES:
+        prefix, suffix = self.prefix, self.suffix
+    if with_decimals:
+        num = prefix + amount + num + self.dec_symbol + rem + suffix
+    else:
+        num = prefix + amount + num + suffix
+    if as_html and (not usd) and self.currency in RTL_CURRENCIES:
         return '<span dir="rtl">%s</span>' % num
     return num
 
