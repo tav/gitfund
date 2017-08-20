@@ -118,7 +118,6 @@ TERRITORY_FORMATS = {
     'MA': ('', '\xa0¤'),
     'NO': ('', '\xa0¤'),
     'PE': ('¤\xa0', ''),
-    'SH-TA': ('¤\xa0', ''),
     'TH': ('', '\xa0¤'),
     'TR': ('', '\xa0¤'),
     'VN': ('', '\xa0¤'),
@@ -139,7 +138,7 @@ CURRENCY_SYMBOLS = {
     'CLP': 'CL$',
     'COP': 'CO$',
     'DKK': 'kr.',
-    'EGP': 'ج.م.',
+    'EGP': 'ج.م',
     'HRK': 'kn',
     'KRW': '원',
     'LKR': 'Rs',
@@ -337,6 +336,11 @@ for territory in sorted(TERRITORY_CODES):
     else:
         usd_prefix = ''
         usd_suffix = '\xa0US$'
+
+    # Force all sterling currencies to be GBP for now.
+    if '£' in cur_prefix:
+        currency = 'GBP'
+        cur_prefix = '£'
 
     TERRITORY2CURRENCY[territory] = (
         currency, cur_prefix, cur_suffix, grouping, group_symbol, dec_symbol,

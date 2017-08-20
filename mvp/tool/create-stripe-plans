@@ -8,9 +8,14 @@
 import sys
 
 from os import environ, pathsep
-from os.path import dirname, isfile, join, realpath
+from os.path import dirname, isfile, join
 
-app_path = join(dirname(dirname(realpath(__file__))), 'app')
+from plandata import PLANS
+
+import stripe
+import stripe.http_client
+
+from stripe.error import InvalidRequestError
 
 gcloud_sdk = ""
 for path in environ["PATH"].split(pathsep):
@@ -22,14 +27,8 @@ else:
     print "ERROR: Unable to locate dev_appserver.py on the $PATH."
     sys.exit(1)
 
-sys.path.append(app_path)
-sys.path.append(join(app_path, 'lib'))
-
-import stripe
-import stripe.http_client
-
-from stripe.error import InvalidRequestError
-
+# Insert this after importing the stripe library to avoid use of the urlfetch
+# HTTP client.
 sys.path.insert(0, join(gcloud_sdk, 'platform', 'google_appengine'))
 
 if sys.argv[1:] and sys.argv[1] == '--live':
@@ -38,38 +37,30 @@ if sys.argv[1:] and sys.argv[1] == '--live':
 else:
     expect_live = False
 
+# Import from config after including the google_appengine libs.
 from config import LIVE, STRIPE_SECRET_KEY
-from minfin import PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_VERSION
 
 stripe.api_key = STRIPE_SECRET_KEY
-version = 'v%d' % PLAN_VERSION
 
 if expect_live and not LIVE:
     print "ERROR: LIVE is set to False in config.py"
     sys.exit(1)
 
-def get_or_create(id, amount, name):
+print ">> Creating stripe plans ..."
+
+def get_sort_key((id, (amount, currency, _))):
+    return (currency, id.endswith('.vat'), amount)
+
+for id, (amount, currency, name) in sorted(PLANS.items(), key=get_sort_key):
     try:
         stripe.Plan.retrieve(id)
     except InvalidRequestError:
         stripe.Plan.create(
             id=id,
-            amount=amount * 100,
-            currency='GBP',
+            amount=amount,
+            currency=currency,
             interval='month',
             name=name,
             statement_descriptor='GITFUND'
             )
     print ".. created:", id
-
-print ">> Creating stripe plans ..."
-
-for plan, amount in sorted(PLAN_AMOUNTS.items(), key=lambda item: item[1]):
-    plan_id = '%s.%s' % (plan, version)
-    get_or_create(
-        plan_id, amount, '%s Sponsorship (%s)' % (plan.title(), version)
-        )
-    get_or_create(
-        plan_id + '.gb', PLAN_AMOUNTS_GB[plan],
-        '%s Sponsorship (%s, GB)' % (plan.title(), version)
-        )
