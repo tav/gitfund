@@ -7,14 +7,15 @@
 
 import sys
 
+from json import dump as save_json, load as load_json
 from os import environ, pathsep
-from os.path import dirname, isfile, join
+from os.path import abspath, dirname, isfile, join
 
 from plandata import PLANS
 
 import stripe
-import stripe.http_client
 
+from stripe.http_client import RequestsClient
 from stripe.error import InvalidRequestError
 
 gcloud_sdk = ""
@@ -27,8 +28,6 @@ else:
     print "ERROR: Unable to locate dev_appserver.py on the $PATH."
     sys.exit(1)
 
-# Insert this after importing the stripe library to avoid use of the urlfetch
-# HTTP client.
 sys.path.insert(0, join(gcloud_sdk, 'platform', 'google_appengine'))
 
 if sys.argv[1:] and sys.argv[1] == '--live':
@@ -41,10 +40,26 @@ else:
 from config import LIVE, STRIPE_SECRET_KEY
 
 stripe.api_key = STRIPE_SECRET_KEY
+stripe.default_http_client = RequestsClient(timeout=5)
 
 if expect_live and not LIVE:
     print "ERROR: LIVE is set to False in config.py"
     sys.exit(1)
+
+if LIVE:
+    key = 'live'
+else:
+    key = 'test'
+
+progress_path = join(abspath(dirname(__file__)), '.plans.json')
+if isfile(progress_path):
+    f = open(progress_path, 'rb')
+    progress = load_json(f)
+    f.close()
+else:
+    progress = {key: []}
+
+seen = set(progress[key])
 
 print ">> Creating stripe plans ..."
 
@@ -52,15 +67,29 @@ def get_sort_key((id, (amount, currency, _))):
     return (currency, id.endswith('.vat'), amount)
 
 for id, (amount, currency, name) in sorted(PLANS.items(), key=get_sort_key):
+    if id in seen:
+        continue
+    print ".. creating:", id
+    err = None
     try:
         stripe.Plan.retrieve(id)
     except InvalidRequestError:
-        stripe.Plan.create(
-            id=id,
-            amount=amount,
-            currency=currency,
-            interval='month',
-            name=name,
-            statement_descriptor='GITFUND'
+        try:
+            stripe.Plan.create(
+                id=id,
+                amount=amount,
+                currency=currency,
+                interval='month',
+                name=name,
+                statement_descriptor='GITFUND'
             )
-    print ".. created:", id
+        except Exception as err:
+            print err
+    except Exception as err:
+        print err
+    if not err:
+        seen.add(id)
+        progress[key] = list(seen)
+        f = open(progress_path, 'wb')
+        save_json(progress, f)
+        f.close()
