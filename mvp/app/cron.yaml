@@ -3,6 +3,10 @@
 
 cron:
 
+- description: Sync Donor Totals
+  url: /cron.donors
+  schedule: every 1 minutes
+
 - description: Sync GitHub Profile Info
   url: /cron.github
   schedule: every 12 minutes
