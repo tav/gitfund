@@ -9,7 +9,16 @@ from json import dumps as encode_json, loads as decode_json
 # Models
 # -----------------------------------------------------------------------------
 
-class GP(db.Model): # key=<github_username>
+class DonorTotals(db.Model): # key=<project_id>
+    v = db.IntegerProperty(default=0)
+    count = db.IntegerProperty(default=0)
+
+class ExchangeRates(db.Model): # key='latest'
+    v = db.IntegerProperty(default=0)
+    data = db.BlobProperty(default='')
+    updated = db.DateTimeProperty(auto_now=True)
+
+class GitHubProfile(db.Model): # key=<github_username>
     v = db.IntegerProperty(default=0)
     avatar = db.StringProperty(default='', indexed=False)
     description = db.TextProperty(default=u'')
@@ -19,21 +28,15 @@ class GP(db.Model): # key=<github_username>
     name = db.StringProperty(default='', indexed=False)
     updated = db.DateTimeProperty(auto_now=True)
 
-GitHubProfile = GP
-
-class GR(db.Model): # key=<repo_id>
+class GitHubRepo(db.Model): # key=<repo_id>
     v = db.IntegerProperty(default=0)
     stars = db.IntegerProperty(default=0, indexed=False)
 
-GitHubRepo = GR
-
-class L(db.Model): # key=e.<base32_encoded_email_lower>
+class Login(db.Model): # key=e.<base32_encoded_email_lower>
     v = db.IntegerProperty(default=0)
     user_id = db.IntegerProperty(default=0)
 
-Login = L
-
-class SE(db.Model): # key=<stripe_event_id>
+class StripeEvent(db.Model): # key=<stripe_event_id>
     v = db.IntegerProperty(default=0)
     created = db.IntegerProperty(default=0)
     customer = db.StringProperty(default='')
@@ -42,16 +45,12 @@ class SE(db.Model): # key=<stripe_event_id>
     livemode = db.BooleanProperty(default=False)
     state = db.IntegerProperty(default=0)
 
-StripeEvent = SE
-
-class SR(db.Model): # key=<user_id>, parent=<ST:project_id>
+class SponsorRecord(db.Model): # key=<user_id>, parent=<ST:project_id>
     v = db.IntegerProperty(default=0)
     plan = db.StringProperty(default='', indexed=False)
     version = db.IntegerProperty(default=0, indexed=False)
 
-SponsorRecord = SR
-
-class ST(db.Model): # key=<project_id>
+class SponsorTotals(db.Model): # key=<project_id>
     v = db.IntegerProperty(default=0)
     plans = db.TextProperty(default='')
 
@@ -63,9 +62,7 @@ class ST(db.Model): # key=<project_id>
     def set_plans(self, plans):
         self.plans = encode_json(plans)
 
-SponsorTotals = ST
-
-class TP(db.Model): # key=<twitter_screen_name>
+class TwitterProfile(db.Model): # key=<twitter_screen_name>
     v = db.IntegerProperty(default=0)
     avatar = db.StringProperty(default='', indexed=False)
     description = db.TextProperty(default=u'')
@@ -75,10 +72,10 @@ class TP(db.Model): # key=<twitter_screen_name>
     name = db.StringProperty(default='', indexed=False)
     updated = db.DateTimeProperty(auto_now=True)
 
-TwitterProfile = TP
-
-class U(db.Model): # key=<auto>
+class User(db.Model): # key=<auto>
     v = db.IntegerProperty(default=0)
+    backer = db.BooleanProperty(default=False)
+    backing_started = db.DateTimeProperty()
     created = db.DateTimeProperty(auto_now_add=True)
     delinquent = db.BooleanProperty(default=False)
     delinquent_emailed = db.BooleanProperty(default=False)
@@ -87,10 +84,9 @@ class U(db.Model): # key=<auto>
     link_text = db.StringProperty(default='', indexed=False)
     link_url = db.StringProperty(default='', indexed=False)
     name = db.StringProperty(default='', indexed=False)
+    payment_type = db.StringProperty(default='')                     # 'stripe' | 'manual'
     plan = db.StringProperty(default='')
     sponsor = db.BooleanProperty(default=False)
-    sponsor_type = db.StringProperty(default='')                     # 'stripe' | 'manual'
-    sponsorship_started = db.DateTimeProperty()
     stripe_customer_id = db.StringProperty(default='', indexed=False)
     stripe_is_unpaid = db.BooleanProperty(default=False)
     stripe_needs_cancelling = db.ListProperty(str, indexed=False)
@@ -129,5 +125,3 @@ class U(db.Model): # key=<auto>
 
     def get_stripe_meta(self):
         return {"version": str(self.stripe_update_version)}
-
-User = U
