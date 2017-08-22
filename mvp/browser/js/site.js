@@ -63,11 +63,11 @@ defpkg('app', function(exports, root) {
 
   function initApp() {
     FastClick.attach(body);
-    initMoreLink();
     initToggler();
     initComments();
     initParticles();
     initPaymentForm();
+    initPriceUpdater();
   }
 
   function initComments() {
@@ -99,18 +99,17 @@ defpkg('app', function(exports, root) {
     insertScript('https://gitfund.disqus.com/count-data.js?1=' + encodeURIComponent($disqusCount.getAttribute('data-disqus-identifier')) + "&ts=" + +new Date, false);
   }
 
-  function initMoreLink() {
-    var link = doc.$('more-link');
-    if (!link) {
+  function initGoogleAnalytics() {
+    if (loc.host !== "gitfund.io") {
       return;
     }
-    bindClick($('comment-link'), function(e) {
-      addClass($('comments-container'), 'more-show');
-    });
-    bindClick(link, function(e) {
-      addClass($('campaign-inner'), 'more-show');
-      e.preventDefault();
-    });
+    root['GoogleAnalyticsObject'] = 'ga';
+    root.ga = function() {
+      root.ga.q.push(arguments);
+    };
+    root.ga.l = 1 * new Date();
+    root.ga.q = [['create', 'UA-90176-40', 'auto'], ['send', 'pageview']];
+    insertScript('https://www.google-analytics.com/analytics.js', true);
   }
 
   function initParticles() {
@@ -185,21 +184,8 @@ defpkg('app', function(exports, root) {
     });
   }
 
-  function initGoogleAnalytics() {
-    if (loc.host !== "gitfund.io") {
-      return;
-    }
-    root['GoogleAnalyticsObject'] = 'ga';
-    root.ga = function() {
-      root.ga.q.push(arguments);
-    };
-    root.ga.l = 1 * new Date();
-    root.ga.q = [['create', 'UA-90176-40', 'auto'], ['send', 'pageview']];
-    insertScript('https://www.google-analytics.com/analytics.js', true);
-  }
-
   function initPaymentForm() {
-    var $form = doc.$('sponsor-form');
+    var $form = doc.$('backer-form');
     if (!$form) {
       return;
     }
@@ -207,11 +193,12 @@ defpkg('app', function(exports, root) {
         errorElement = null,
         submitted = false,
         submitting = false,
-        $name = doc.$('sponsor-name'),
-        $email = doc.$('sponsor-email'),
-        $territory = doc.$('sponsor-territory'),
-        $taxID = doc.$('sponsor-tax-id'),
-        $taxIDField = doc.$('sponsor-tax-id-field'),
+        $name = doc.$('backer-name'),
+        $email = doc.$('backer-email'),
+        $plan = doc.$('backer-plan'),
+        $territory = doc.$('backer-territory'),
+        $taxID = doc.$('backer-tax-id'),
+        $taxIDField = doc.$('backer-tax-id-field'),
         $number = doc.$('card-number'),
         $visa = doc.$('card-visa'),
         $mastercard = doc.$('card-mastercard'),
@@ -219,7 +206,12 @@ defpkg('app', function(exports, root) {
         $expMonth = doc.$('card-exp-month'),
         $expYear = doc.$('card-exp-year'),
         $cvc = doc.$('card-cvc'),
-        isUpdateForm = $email == null;
+        $submitButton = doc.$('submit'),
+        $submitConfirm = doc.$('submit-confirm'),
+        isUpdateForm = $email == null,
+        PLANS = root.PLANS,
+        PLANS_INDEX = root.PLANS_INDEX,
+        TAX_PREFIXES = root.TAX_PREFIXES;
     var cardTypes = {
       'American Express': {
         hide: [$mastercard, $visa],
@@ -277,7 +269,7 @@ defpkg('app', function(exports, root) {
       }
     };
     var hideError = function(id) {
-      if (id !== 'sponsor-tax-id') {
+      if (id !== 'backer-tax-id') {
         if (!errors[id]) {
           return;
         }
@@ -296,9 +288,9 @@ defpkg('app', function(exports, root) {
     };
     var isValidEmail = function(email) {
       if (email === "") {
-        showError('sponsor-email', "Please specify your email address.");
+        showError('backer-email', "Please specify your email address.");
       } else if (!emailRegex.test(email)) {
-        showError('sponsor-email', "Please provide a valid email address");
+        showError('backer-email', "Please provide a valid email address");
       } else {
         return true;
       }
@@ -316,7 +308,7 @@ defpkg('app', function(exports, root) {
     };
     var isValidName = function(name) {
       if (name === "") {
-        showError('sponsor-name', "Please specify your name.");
+        showError('backer-name', "Please specify your name.");
       } else {
         return true;
       }
@@ -331,21 +323,15 @@ defpkg('app', function(exports, root) {
       }
     };
     var isValidTaxID = function(taxPrefix, taxID) {
-      if (taxPrefix === "GB") {
-        var trimmed = trim(taxID);
-        if (trimmed === "" || trimmed === "GB") {
-          return true;
-        }
-      }
       if (taxID.length <= 4 || taxID.substring(0, 2).toUpperCase() != taxPrefix) {
-        showError('sponsor-tax-id', "Invalid VAT ID.")
+        showError('backer-tax-id', "Invalid VAT ID.")
       } else {
         return true;
       }
     }
     var isValidTerritory = function(territory) {
       if (territory === "") {
-        showError('sponsor-territory', "Please select your country.");
+        showError('backer-territory', "Please select your country.");
       } else {
         return true;
       }
@@ -353,54 +339,76 @@ defpkg('app', function(exports, root) {
     if (!isUpdateForm) {
       $name.addEventListener('input', function() {
         if (submitted && isValidName($name.value)) {
-          hideError('sponsor-name');
+          hideError('backer-name');
         }
       });
       $email.addEventListener('input', function() {
         if (submitted && isValidEmail($email.value)) {
-          hideError('sponsor-email');
+          hideError('backer-email');
         }
       });
     }
-    $territory.addEventListener('change', function() {
-      var territory = $territory.options[$territory.selectedIndex].value,
-          taxPrefix = TAX[territory],
-          planRepr = root.PLANS;
-      if (taxPrefix) {
-        if (taxPrefix == "GB") {
-          planRepr = root.PLANS_GB;
-        }
+    $plan.addEventListener('change', function() {
+      var plan = $plan.options[$plan.selectedIndex].value,
+          territory = $territory.options[$territory.selectedIndex].value,
+          taxPrefix = TERRITORY2TAX[territory];
+      if (taxPrefix && plan !== 'donor') {
         $taxID.value = taxPrefix;
         $taxIDField.style.display = 'block';
       } else {
         $taxIDField.style.display = 'none';
         $taxID.value = '';
       }
-      ["bronze", "silver", "gold", "platinum"].forEach(function(tier) {
-        doc.$('plan-' + tier).innerHTML = planRepr[tier];
+      if (plan === 'donor') {
+        if ($submitButton) {
+          $submitButton.value = "Confirm Monthly Donation";
+        }
+        if ($submitConfirm) {
+          $submitConfirm.innerText = "donation";
+        }
+      } else {
+        if ($submitButton) {
+          $submitButton.value = "Confirm Monthly Sponsorship";
+        }
+        if ($submitConfirm) {
+          $submitConfirm.innerText = "sponsorship";
+        }
+      }
+    });
+    $territory.addEventListener('change', function() {
+      var territory = $territory.options[$territory.selectedIndex].value,
+          taxPrefix = TERRITORY2TAX[territory],
+          prices;
+      if (territory === '') {
+        prices = DETAILED_DEFAULT;
+      } else {
+        prices = PRICES_INDEX[TERRITORY2PRICES[territory]];
+      }
+      if (taxPrefix && $plan.options[$plan.selectedIndex].value !== 'donor') {
+        $taxID.value = taxPrefix;
+        $taxIDField.style.display = 'block';
+      } else {
+        $taxIDField.style.display = 'none';
+        $taxID.value = '';
+      }
+      ["donor", "bronze", "silver", "gold", "platinum"].forEach(function(tier) {
+        doc.$('plan-' + tier).innerHTML = prices[PRICES_POS[tier + '-detailed']];
       });
       if (submitted && isValidTerritory(territory)) {
-        hideError('sponsor-territory');
+        hideError('backer-territory');
       }
     });
-    $taxID.addEventListener('keypress', function() {
+    var handleTaxID = function() {
       if (submitted) {
-        if (isValidTaxID(TAX[$territory.options[$territory.selectedIndex].value], $taxID.value)) {
-          hideError('sponsor-tax-id');
+        if (isValidTaxID(TERRITORY2TAX[$territory.options[$territory.selectedIndex].value], $taxID.value)) {
+          hideError('backer-tax-id');
         }
       } else {
-        hideError('sponsor-tax-id');
+        hideError('backer-tax-id');
       }
-    });
-    $taxID.addEventListener('input', function() {
-      if (submitted) {
-        if (isValidTaxID(TAX[$territory.options[$territory.selectedIndex].value], $taxID.value)) {
-          hideError('sponsor-tax-id');
-        }
-      } else {
-        hideError('sponsor-tax-id');
-      }
-    });
+    };
+    $taxID.addEventListener('keypress', handleTaxID);
+    $taxID.addEventListener('input', handleTaxID);
     $number.addEventListener('keypress', function(e) {
       // Ignore browser shortcuts and special characters.
       if (e.metaKey || e.ctrlKey || e.which < 32) {
@@ -508,9 +516,9 @@ defpkg('app', function(exports, root) {
         isValidEmail($email.value);
       }
       var territory = $territory.options[$territory.selectedIndex].value,
-          taxPrefix = TAX[territory];
+          taxPrefix = TERRITORY2TAX[territory];
       isValidTerritory(territory);
-      if (taxPrefix) {
+      if (taxPrefix && $plan.options[$plan.selectedIndex].value !== 'donor') {
         isValidTaxID(taxPrefix, $taxID.value);
       }
       if (processCard) {
@@ -549,6 +557,25 @@ defpkg('app', function(exports, root) {
           $form.submit();
         });
       }
+    });
+  }
+
+  function initPriceUpdater() {
+    var $updater = doc.$('price-updater');
+    if (!$updater) {
+      return;
+    }
+    var priceKeys = Object.keys(PRICES_POS);
+    $updater.addEventListener('change', function() {
+      var territory = $updater.options[$updater.selectedIndex].value,
+          prices = PRICES_INDEX[TERRITORY2PRICES[territory]];
+      priceKeys.forEach(function(key) {
+        var elems = doc.getElementsByClassName('price-info-' + key),
+            info = prices[PRICES_POS[key]];
+        for (var i = 0; i < elems.length; i++) {
+          elems[i].innerHTML = info;
+        }
+      })
     });
   }
 
