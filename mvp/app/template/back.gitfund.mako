@@ -16,43 +16,43 @@
 		Back GitFund
 	% endif
 	</div>
-	<form action="/back.gitfund" method="POST" id="sponsor-form" class="dataform">
+	<form action="/back.gitfund" method="POST" id="backer-form" class="dataform">
 		% if not exists:
 		<div class="field">
-			<label for="sponsor-name">Your Name</label>
+			<label for="backer-name">Your Name</label>
 			<div class="field-data">
-				<input id="sponsor-name" class="field-input" name="name" value="${name|h}" autofocus>
-				<div id="sponsor-name-error" class="field-errmsg"></div>
+				<input id="backer-name" class="field-input" name="name" value="${name|h}" autofocus>
+				<div id="backer-name-error" class="field-errmsg"></div>
 			</div>
 		</div>
 		<div class="field">
-			<label for="sponsor-email">Email Address</label>
+			<label for="backer-email">Email Address</label>
 			<div class="field-data">
-				<input id="sponsor-email" class="field-input" name="email" value="${email|h}" autocapitalize="none" autocorrect="off">
-				<div id="sponsor-email-error" class="field-errmsg"></div>
+				<input id="backer-email" class="field-input" name="email" value="${email|h}" autocapitalize="none" autocorrect="off">
+				<div id="backer-email-error" class="field-errmsg"></div>
 			</div>
 		</div>
 		% endif
 		<div class="field">
-			<label for="sponsor-plan">Support Tier</label>
+			<label for="backer-plan">Support Tier</label>
 			<div class="field-data">
-				<div class="select-box"><select id="sponsor-plan" name="plan">
+				<div class="select-box"><select id="backer-plan" name="plan">
 					<%
-						_price_plans = ctx.PLANS
-						if territory in ctx.TERRITORY2TAX:
-							if ctx.TERRITORY2TAX[territory][0] == "GB":
-								_price_plans = ctx.PLANS_GB
+						if territory:
+							prices = ctx.PRICES_INDEX[ctx.TERRITORY2PRICES[territory]]
+						else:
+							prices = ctx.DETAILED_DEFAULT
 					%>
-					% for tier in ['bronze', 'silver', 'gold', 'platinum']:
-					<option${plan == tier and ' selected' or ''} value="${tier}" id="plan-${tier}">${_price_plans[tier]}</option>
+					% for tier in ['donor', 'bronze', 'silver', 'gold', 'platinum']:
+					<option${plan == tier and ' selected' or ''} value="${tier}" id="plan-${tier}">${prices[ctx.PRICES_POS[tier + '-detailed']]}</option>
 					% endfor
 				</select></div>
 			</div>
 		</div>
 		<div class="field">
-			<label for="sponsor-territory">Country</label>
+			<label for="backer-territory">Country</label>
 			<div class="field-data">
-				<div class="select-box"><select id="sponsor-territory" name="territory">
+				<div class="select-box"><select id="backer-territory" name="territory">
 				<option value=""></option>
 				% for tset in ctx.TERRITORIES:
 					% if len(tset) != 1:
@@ -66,14 +66,18 @@
 					% endif
 				% endfor
 				</select></div>
-				<div id="sponsor-territory-error" class="field-errmsg"></div>
+				<div id="backer-territory-error" class="field-errmsg"></div>
 			</div>
 		</div>
-		<div class="field${tax_id_is_invalid and ' field-error' or ''}" id="sponsor-tax-id-field" style="${territory not in ctx.TERRITORY2TAX and 'display: none;' or ''}">
-			<label for="sponsor-tax-id">VAT ID</label>
+		% if territory in ctx.TERRITORY2TAX and plan != 'donor':
+		<div class="field${tax_id_is_invalid and ' field-error' or ''}" id="backer-tax-id-field">
+		% else:
+		<div class="field${tax_id_is_invalid and ' field-error' or ''}" id="backer-tax-id-field" style="display: none">
+		% endif
+			<label for="backer-tax-id">VAT ID</label>
 			<div class="field-data">
-				<input id="sponsor-tax-id" class="field-input" name="tax_id" value="${tax_id|h}" autocapitalize="none" autocorrect="off">
-				<div id="sponsor-tax-id-error" class="field-errmsg">
+				<input id="backer-tax-id" class="field-input" name="tax_id" value="${tax_id|h}" autocapitalize="none" autocorrect="off">
+				<div id="backer-tax-id-error" class="field-errmsg">
 				% if tax_id_is_invalid:
 				Invalid VAT ID.
 				% endif
@@ -134,8 +138,8 @@
 			% if exists_plan:
 			<input type="submit" value="Update Billing Details">
 			% else:
-			<p>By confirming your monthly <span id="submit-confirm">${plan == 'donor' and 'donation' or 'sponsorship'}</span>, you are agreeing to <a href="/site/terms">GitFund's Terms of Service</a> and <a href="/site/privacy">Privacy Policy</a>.</p>
-			<input type="submit" id="submit" value="Confirm Monthly ${plan == 'donor' and 'Donation' or 'Sponsorship'}">
+			<p>By confirming your monthly <span id="submit-confirm">${plan in ('', 'donor') and 'donation' or 'sponsorship'}</span>, you are agreeing to <a href="/site/terms">GitFund's Terms of Service</a> and <a href="/site/privacy">Privacy Policy</a>.</p>
+			<input type="submit" id="submit" value="Confirm Monthly ${plan in ('', 'donor') and 'Donation' or 'Sponsorship'}">
 			% endif
 		</div>
 	</form>
