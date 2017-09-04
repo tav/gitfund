@@ -13,7 +13,7 @@ CONTENT_FACTORS = {
     'example-gold': 250,
     'example-silver': 50,
     'example-bronze': 5,
-    'hosting': 400
+    'target': int(CAMPAIGN_TARGET_FACTOR)
 }
 
 PLAN_FACTORS = {
