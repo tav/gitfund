@@ -156,6 +156,20 @@ module.exports = (api) ->
     '.alert-red':
       background: '#ffc788'
 
+    '.ambassador-button':
+      a:
+        textAlign: 'center'
+        width: '100%'
+        background: '#ee2e7c'
+        borderRadius: '3px'
+        color: '#fff'
+        display: 'inline-block'
+        padding: '8px 16px'
+        marginBottom: '14px'
+        transition: 'background-color 250ms ease-out'
+        '&:hover':
+          background: '#d81262'
+
     '.backers':
       listStyleType: 'none'
       margin: '0 0 20px 0'
@@ -190,10 +204,10 @@ module.exports = (api) ->
           border: '1px dotted #dadada'
 
     '.backing-plan-backers':
-      color: '#a7b2b8'
+      color: '#515d64'
       fontSize: '13px'
       lineHeight: '13px'
-      paddingTop: '1px'
+      paddingTop: '3px'
 
     '.backing-plan-disabled':
       cursor: 'default'
@@ -293,24 +307,6 @@ module.exports = (api) ->
 
     '.campaign-cols':
       marginTop: '20px'
-      '.more-show':
-        '.more-block':
-          display: 'block !important'
-        '.more-link':
-          display: 'none !important'
-        '.campaign-content.campaign-box':
-          marginBottom: '20px !important'
-      '.campaign-content.campaign-box':
-        '@media all and (max-width: 922px)':
-          marginBottom: '0px'
-      '.more-block':
-        display: 'block'
-        '@media all and (max-width: 922px)':
-          display: 'none'
-      '.more-link':
-        display: 'none'
-        '@media all and (max-width: 922px)':
-          display: 'block'
 
     '.campaign-col1':
       float: 'left'
@@ -326,13 +322,66 @@ module.exports = (api) ->
         float: 'none'
         width: '100%'
 
-    '.campaign-content':
+    '#campaign-content':
       '.full-bleed':
         lineHeight: '0px'
         marginLeft: '-18px'
         marginRight: '-18px'
         img:
           width: '100%'
+      '.read-full':
+        display: 'none'
+      h4:
+        cursor: 'pointer'
+        fontSize: '18px'
+        userSelect: 'none'
+      'h4::before':
+        borderStyle: 'solid'
+        borderWidth: '3px 3px 0 0'
+        content: '""'
+        display: 'inline-block'
+        height: '10px'
+        marginRight: '11px'
+        position: 'relative'
+        top: '-1px'
+        transform: 'rotate(45deg)'
+        width: '9px'
+      'h4.expanded::before':
+        top: '-2px'
+        transform: 'rotate(135deg)'
+      '.image':
+        textAlign: 'center'
+        img:
+          maxWidth: '100%'
+
+    '#campaign-content.collapse-mobile':
+      '@media all and (max-width: 922px)':
+        '.content':
+          height: '1200px'
+          overflow: 'hidden'
+        '.read-full':
+          background: '#e8e8e8'
+          background: '#f9f9f9'
+          display: 'block'
+          margin: '0 0 20px 0'
+          padding: '20px 0 40px 0'
+          position: 'relative'
+          textAlign: 'center'
+          '&:before':
+            background: 'linear-gradient(to bottom,rgba(249,249,249,0)0,rgba(249,249,249,.01)1%,#f9f9f9 75%)'
+            content: '""'
+            display: 'block'
+            position: 'absolute'
+            height: '150px'
+            zIndex: '999'
+            bottom: '100%'
+            width: '100%'
+            left: '0'
+          '.read-full-link':
+            background: '#fff'
+            border: '1px solid #e0e0e0'
+            padding: '20px 24px'
+            fontWeight: '700'
 
     '.campaign-inner':
       margin: '0 auto'
@@ -455,6 +504,7 @@ module.exports = (api) ->
         fontSize: '16px'
         fontWeight: '300'
         marginRight: '10px'
+        maxWidth: '400px'
       'label':
         display: 'inline-block'
         float: 'left'
@@ -511,10 +561,18 @@ module.exports = (api) ->
           display: 'block'
 
     '.disqus':
-      padding: '20px 0'
+      padding: '20px 0px 24px 0px'
       '@media all and (max-width: 922px)':
-        borderBottom: '1px solid #e7e9ee'
-        marginBottom: '20px'
+        padding: '20px 6px 24px 6px'
+
+    '.donors-list':
+      li:
+        paddingBottom: '10px'
+        float: 'left'
+        width: '50%'
+        '@media all and (max-width: 922px)':
+          float: 'none'
+          width: '100%'
 
     '.e':
       width: '1.2em'
@@ -626,30 +684,6 @@ module.exports = (api) ->
       marginRight: '4px'
       top: '4px'
       width: '20px'
-
-    '.goal-bar':
-      background: '#f2f4f5'
-      borderRadius: '3px'
-      height: '8px'
-      marginTop: '12px'
-      div:
-        background: '#2bde73'
-        borderRadius: '3px'
-        height: '8px'
-
-    '.goal-period':
-      color: '#a7b2b8'
-      fontSize: '13px'
-      lineHeight: '13px'
-      paddingTop: '2px'
-
-    '.goal-status':
-      fontWeight: '700'
-      paddingTop: '18px'
-      span:
-        fontSize: '14px'
-        fontStyle: 'italic'
-        fontWeight: '300'
 
     '.header':
       background: '#fff'
@@ -810,7 +844,7 @@ module.exports = (api) ->
             color: '#fff'
 
     '.notice':
-      padding: '20px 0 40px 0'
+      padding: '0px 0 40px 0'
       fontSize: '30px'
       lineHeight: '42px'
       '@media all and (max-width: 600px)':
@@ -876,6 +910,43 @@ module.exports = (api) ->
       padding: '10px 5px'
       textAlign: 'center'
 
+    '.price-switcher':
+      p:
+        color: '#0a0a0a'
+        padding: '0px 0px 3px 0px'
+        margin: '0px'
+        fontSize: '12px'
+        # letterSpacing: '1px'
+        textTransform: 'uppercase'
+
+    '.progress-bar':
+      background: '#f2f4f5'
+      background: '#ccc'
+      borderRadius: '3px'
+      height: '8px'
+      marginBottom: '7px'
+      maxWidth: '500px'
+      position: 'relative'
+      '.progress-bar-fill':
+        background: '#2bde73'
+        borderRadius: '3px'
+        height: '8px'
+      '.progress-info':
+        background: '#2bde73'
+        background: '#f00'
+        background: '#ffffca'
+        color: '#fff'
+        color: '#000023'
+        display: 'none'
+        fontSize: '12px'
+        padding: '8px 5px'
+        position: 'absolute'
+        right: '0px'
+        top: '14px'
+      '&:hover':
+        '.progress-info':
+          display: 'block'
+
     '.project-activity-bar':
       lineHeight: '40px'
       br:
@@ -913,8 +984,10 @@ module.exports = (api) ->
         marginTop: '-2px'
         zIndex: '100'
       select:
-        padding: '15px 22px 15px 12px'
-        width: '130%'
+        fontSize: '16px'
+        fontWeight: '300'
+        padding: '15px 27px 15px 12px'
+        width: '100%'
         border: 'none'
         boxShadow: 'none'
         background: 'transparent'
@@ -1232,7 +1305,7 @@ module.exports = (api) ->
 
     '.team-profile-follow':
       paddingBottom: '20px'
-      paddingTop: '20px'
+      paddingTop: '10px'
       a:
         position: 'relative'
         img:
@@ -1269,8 +1342,7 @@ module.exports = (api) ->
 
     '.team-profile-image':
       paddingTop: '10px'
-      paddingBottom: '6px'
-      textAlign: 'center'
+      paddingBottom: '10px'
       img:
         width: '200px'
 
