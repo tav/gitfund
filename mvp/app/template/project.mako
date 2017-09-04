@@ -1,8 +1,15 @@
+<% prices = ctx.PRICES_INDEX[ctx.TERRITORY2PRICES[territory]] %>
 <div class="campaign">
 <div class="campaign-header">
 	<div class="campaign-banner"><div class="inner">
-		<div class="info"><strong>${"{:,}".format(totals.sponsors)}</strong> ${ctx.pluralise('sponsor', totals.sponsors)}</div>
-		<div class="info"><strong>£${"{:,}".format(totals.raised)}</strong> per month</div>
+		<div class="progress-bar">
+			<div class="progress-bar-fill" style="width: ${totals.percent}%"></div>
+			% if totals.progress:
+			<div class="progress-info">${totals.progress}</div>
+			% endif
+		</div>
+		<div class="info"><strong>${"{:,}".format(totals.backers)}</strong> ${ctx.pluralise('backer', totals.backers)}</div>
+		<div class="info"><strong class="price-info-target">${prices[ctx.PRICES_POS['target']]}</strong> / month target</div>
 		<a class="sponsor" href="/back.gitfund">Back This Project</a>
 	</div></div>
 </div>
@@ -25,42 +32,57 @@
 		<a class="ghb" href="https://github.com/tav/gitfund"><span class="ghb-left"><span class="ghb-icon"></span><span class="ghb-repo">gitfund</span></span><span class="ghb-right"><span class="ghb-star"></span><span class="ghb-count">${social.repo.stars}</span></span></a>
 		<a href="#disqus_thread" data-disqus-identifier="tav/gitfund" id="disqus_count" class="comment-link">Leave a comment</a>
 	</div>
-	<div class="campaign-col1">
-		<div class="campaign-box campaign-content content inner-pad-only">
-			${ctx.CAMPAIGN_CONTENT}
+	<div id="campaign-content" class="campaign-col1 collapse-mobile">
+		<div class="campaign-box content inner-pad-only">
+			${ctx.render_campaign_content(territory, totals.sponsor_plans)}
 		</div>
+		<div class="read-full"><a href="" class="read-full-link">READ FULL ARTICLE</a></div>
 	</div>
 	<div class="campaign-col2">
-		<div class="campaign-box">
-			<div class="campaign-box-inner-sides">
-			<div class="goal-bar"><div style="width: ${totals.percent}"></div></div>
-			<div class="goal">
-				% if totals.progress:
-				<div class="goal-status">${totals.progress}</div>
-				% endif
-			</div>
+		<div>
+			<div class="campaign-box-inner price-switcher">
+				<p>Switch currency:</p>
+				<div class="select-box"><select id="price-updater">
+				% for tset in ctx.TERRITORIES:
+					% if len(tset) != 1:
+					<optgroup label="${tset[-1][0]}">
+					% endif
+					% for territory_name, territory_code in tset:
+					<option value="${territory_code}"${territory_code == territory and ' selected="selected"' or ''}>${territory_name}</option>
+					% endfor
+					% if len(tset) != 1:
+					</optgroup>
+					% endif
+				% endfor
+				</select></div>
 			</div>
 		</div>
 		<div class="campaign-box">
 			<div class="campaign-box-inner">
-			% for idx, plan in enumerate(['bronze', 'silver', 'gold', 'platinum']):
+			% for plan in ['donor', 'bronze', 'silver', 'gold', 'platinum']:
 				<%
-					plan_title = plan.title()
-					slots_total = ctx.PLAN_SLOTS[plan]
-					slots_available = max(slots_total - totals.plans[plan], 0)
-					if not slots_available:
-						remaining = 'All %s slots taken' % slots_total
-					elif slots_available == slots_total:
-						remaining = '%s slots available' % slots_available
+					plan_title = ctx.DETAILED_DEFAULT[ctx.PRICES_POS[plan + '-detailed']]
+					if plan == 'donor':
+						info = '%s %s so far' % (totals.donors, ctx.pluralise('donor', totals.donors))
+						slots_available = True
 					else:
-						remaining = '%s of %s slots available' % (slots_available, slots_total)
+						slots_total = ctx.PLAN_SLOTS[plan]
+						slots_available = max(slots_total - totals.sponsor_plans[plan], 0)
+						if not slots_available:
+							info = 'All %s slots taken' % slots_total
+						elif slots_available == slots_total:
+							info = '%s slots available' % slots_available
+						else:
+							info = '%s of %s slots left' % (slots_available, slots_total)
 				%>
-				<div class="backing-plan-title">${plan_title} Sponsorship</div>
-				<div class="backing-plan-backers">${remaining}, ${ctx.format_currency(ctx.PLAN_AMOUNTS[plan])}/month</div>
+				<div class="backing-plan-title">${plan_title}</div>
+				<div class="backing-plan-backers">${info}, <span class="price-info-${plan}-plain">${prices[ctx.PRICES_POS[plan + '-plain']]}</span> / month</div>
 				<div class="backing-plan-desc content">${ctx.PLAN_DESCRIPTIONS[plan]}</div>
 				<div class="backing-plan-select${plan != 'platinum' and ' campaign-box-divider' or ''}${(not slots_available) and ' backing-plan-disabled' or ''}"><a href="/back.gitfund?plan=${plan}">
-				% if slots_available:
-					Become a ${plan_title} Sponsor
+				% if plan == 'donor':
+					Bacome an Individual Donor
+				% elif slots_available:
+					Become a ${plan_title}
 				% else:
 					All slots taken
 				% endif
