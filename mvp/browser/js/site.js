@@ -64,10 +64,59 @@ defpkg('app', function(exports, root) {
   function initApp() {
     FastClick.attach(body);
     initToggler();
+    initCampaignContent();
     initComments();
     initParticles();
     initPaymentForm();
     initPriceUpdater();
+  }
+
+  function initCampaignContent() {
+    var $content = doc.$('campaign-content');
+    if (!$content) {
+      return;
+    }
+    $('read-full-link').addEventListener('click', function(e) {
+      removeClass($content, 'collapse-mobile');
+      loc.hash = 'expanded';
+      e.preventDefault();
+    });
+    var hash = loc.hash,
+        headings = doc.getElementsByTagName('h4');
+    if (hash) {
+      hash = hash.substring(1);
+      removeClass($content, 'collapse-mobile');
+    }
+    for (var i = 0; i < headings.length; i++) {
+      (function(el) {
+        var node = el;
+        el.innerHTML = '<a href="#' + el.id + '">' + el.innerHTML + '</a>';
+        if (hash && el.id === hash) {
+          addClass(el, 'expanded');
+          if (el.scrollIntoView) {
+            el.scrollIntoView();
+          }
+        } else {
+          while ((node = node.nextElementSibling) && node.tagName !== 'H4') {
+            node.style.display = 'none';
+          }
+        }
+        el.addEventListener('click', function(e) {
+          e.preventDefault();
+          var display = 'none';
+          if (hasClass(el, 'expanded')) {
+            removeClass(el, 'expanded');
+          } else {
+            addClass(el, 'expanded');
+            display = 'block';
+          }
+          var node = el;
+          while ((node = node.nextElementSibling) && node.tagName !== 'H4') {
+            node.style.display = display;
+          }
+        })
+      })(headings[i]);
+    }
   }
 
   function initComments() {
