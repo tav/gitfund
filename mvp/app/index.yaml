@@ -13,18 +13,13 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: U
+- kind: User
   properties:
   - name: backer
   - name: sponsor
   - name: backing_started
 
-- kind: U
-  properties:
-  - name: sponsor
-  - name: sponsorship_started
-
-- kind: U
+- kind: User
   properties:
   - name: sponsor
   - name: backing_started
