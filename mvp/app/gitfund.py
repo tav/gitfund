@@ -11,9 +11,9 @@ from base64 import b32encode, b64encode
 from cgi import escape
 from collections import namedtuple
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from hashlib import sha256
-from json import dumps as encode_json
+from json import dumps as encode_json, loads as decode_json
 from random import choice
 from struct import pack
 from thread import allocate_lock
@@ -22,19 +22,19 @@ from time import time
 from urllib import urlencode
 
 from config import (
-    ADMIN_AUTH_KEY, CAMPAIGN_DESCRIPTION, CAMPAIGN_GOAL,  CAMPAIGN_TEAM,
-    CAMPAIGN_TITLE, CANONICAL_HOST, GCS_BUCKET, GITHUB_ACCESS_TOKEN,
-    GITHUB_CALLER_ID, GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, HMAC_KEY, LIVE,
-    MAILJET_API_KEY, MAILJET_SECRET_KEY, MAILJET_SENDER_EMAIL,
-    MAILJET_SENDER_NAME, ON_GOOGLE, PAGES, PLAN_DESCRIPTIONS, SLACK_TOKEN,
+    ADMIN_AUTH_KEY, CAMPAIGN_DESCRIPTION, CAMPAIGN_TEAM, CAMPAIGN_TITLE,
+    CANONICAL_HOST, GCS_BUCKET, GITHUB_ACCESS_TOKEN, GITHUB_CALLER_ID,
+    GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, HMAC_KEY, LIVE, MAILJET_API_KEY,
+    MAILJET_SECRET_KEY, MAILJET_SENDER_EMAIL, MAILJET_SENDER_NAME, ON_GOOGLE,
+    OPEN_EXCHANGE_RATES_APP_ID, PAGES, PLAN_DESCRIPTIONS, SLACK_TOKEN,
     STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_TOKEN,
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET, TWITTER_CONSUMER_KEY,
     TWITTER_CONSUMER_SECRET
 )
 
 from model import (
-    GitHubProfile, GitHubRepo, Login, SponsorRecord, SponsorTotals, StripeEvent,
-    TwitterProfile, User
+    ExchangeRates, DonorTotals, GitHubProfile, GitHubRepo, Login,
+    SponsorRecord, SponsorTotals, StripeEvent, TwitterProfile, User
 )
 
 from weblite import (
@@ -45,6 +45,10 @@ import cloudstorage as gcs
 import stripe
 
 from emoji import EMOJI_MAP, EMOJI_SHORTCODES
+from finance import (
+    BASE_PRICES, CAMPAIGN_TARGET_FACTOR, CONTENT_FACTORS, PLAN_FACTORS,
+    PLAN_SLOTS, TERRITORY2TAX
+)
 
 from gfm import (
     AutolinkExtension, AutomailExtension, SpacedLinkExtension,
@@ -74,10 +78,7 @@ from markdown.extensions.smart_strong import SmartEmphasisExtension
 from markdown.extensions.tables import TableExtension
 from markdown.extensions.toc import TocExtension
 from markdown.preprocessors import Preprocessor
-from minfin import (
-    PLAN_AMOUNTS, PLAN_AMOUNTS_GB, PLAN_FACTORS, PLAN_SLOTS, PLAN_VERSION,
-    TERRITORY2TAX
-)
+from prices import DETAILED_DEFAULT, PRICES_INDEX, PRICES_POS, TERRITORY2PRICES
 
 from tavutil.crypto import (
     create_tamper_proof_string, secure_string_comparison,
@@ -92,9 +93,9 @@ from twitter import Client as TwitterClient
 # -----------------------------------------------------------------------------
 
 AUTH_HANDLERS = frozenset([
-    'cancel.sponsorship',
-    'manage.sponsorship',
-    'sponsor.gitfund',
+    'back.gitfund',
+    'cancel.subscription',
+    'manage.subscription',
     'update.sponsor.profile',
 ])
 
@@ -129,32 +130,6 @@ GRAVATAR_SUFFIX = '?d=https%3A%2F%2F' + CANONICAL_HOST + '%2Fprofile.png'
 stripe.api_key = STRIPE_SECRET_KEY
 
 # -----------------------------------------------------------------------------
-# Plan Representation
-# -----------------------------------------------------------------------------
-
-def format_currency(amount):
-    if amount < 1000:
-        return u'£%s' % amount
-    return u'£%sk' % (Decimal(amount) / Decimal(1000))
-
-def gen_plan_repr():
-    plans = {}
-    plans_gb = {}
-    for tier in ['bronze', 'silver', 'gold', 'platinum']:
-        title = tier.title()
-        amount = format_currency(PLAN_AMOUNTS[tier])
-        amount_gb = format_currency(PLAN_AMOUNTS_GB[tier])
-        plans[tier] = u"%s &nbsp;·&nbsp; %s/month" % (title, amount)
-        plans_gb[tier] = (
-            u"%s &nbsp;·&nbsp; %s/month (includes 20%% VAT)"
-            % (title, amount_gb)
-        )
-    return plans, plans_gb
-
-Context.format_currency = staticmethod(format_currency)
-Context.PLANS, Context.PLANS_GB = gen_plan_repr()
-
-# -----------------------------------------------------------------------------
 # Context Extensions
 # -----------------------------------------------------------------------------
 
@@ -162,27 +137,6 @@ _marker = object()
 
 def current_year():
     return datetime.utcnow().year
-
-def gen_finance_js():
-    resp = ['TAX={']; out = resp.append
-    last = len(TERRITORY2TAX) - 1
-    for idx, territory in enumerate(TERRITORY2TAX):
-        key = territory.replace('-', '_')
-        out('%s:"%s"' % (key, TERRITORY2TAX[territory][0]))
-        if idx != last:
-            out(",")
-    out("};PLANS={")
-    for idx, (key, value) in enumerate(Context.PLANS.iteritems()):
-        out('%s:"%s"' % (key, value))
-        if idx != 3:
-            out(",")
-    out("};PLANS_GB={")
-    for idx, (key, value) in enumerate(Context.PLANS_GB.iteritems()):
-        out('%s:"%s"' % (key, value))
-        if idx != 3:
-            out(",")
-    out("};")
-    return ''.join(resp)
 
 def get_site_sponsors():
     sponsors = get_local('sponsors')
@@ -231,14 +185,16 @@ def pluralise(label, count):
 Context.CAMPAIGN_DESCRIPTION = CAMPAIGN_DESCRIPTION
 Context.CAMPAIGN_TEAM = CAMPAIGN_TEAM
 Context.CAMPAIGN_TITLE = CAMPAIGN_TITLE
-Context.FINANCE_JS = gen_finance_js()
+Context.DETAILED_DEFAULT = DETAILED_DEFAULT
 Context.LIVE = LIVE
 Context.ON_GOOGLE = ON_GOOGLE
-Context.PLAN_AMOUNTS = PLAN_AMOUNTS
 Context.PLAN_SLOTS = PLAN_SLOTS
 Context.PLAN_DESCRIPTIONS = PLAN_DESCRIPTIONS
+Context.PRICES_INDEX = PRICES_INDEX
+Context.PRICES_POS = PRICES_POS
 Context.STRIPE_PUBLISHABLE_KEY = STRIPE_PUBLISHABLE_KEY
 Context.TERRITORIES = TERRITORIES
+Context.TERRITORY2PRICES = TERRITORY2PRICES
 Context.TERRITORY2TAX = TERRITORY2TAX
 
 Context.current_year = staticmethod(current_year)
@@ -289,32 +245,41 @@ def get_local(ident, force=False):
 # -----------------------------------------------------------------------------
 
 Totals = namedtuple(
-    'Totals', ['sponsors', 'raised', 'plans', 'percent', 'progress']
+    'Totals', ['backers', 'donors', 'sponsor_plans', 'percent', 'progress']
 )
 
 def get_totals():
-    plans = SponsorTotals.get_or_insert('gitfund').get_plans()
-    fraction = Decimal('0')
-    raised = sponsors = 0
-    for plan, slots in plans.iteritems():
-        fraction += slots * PLAN_FACTORS[plan]
-        raised += slots * PLAN_AMOUNTS[plan]
-        sponsors += slots
-    progress = ''
-    if not fraction:
-        percent = '0%'
+    cache = get_cache_multi(['sponsor.totals', 'donor.totals'])
+    to_set = {}
+    if 'sponsor.totals' in cache:
+        sponsor_plans = cache['sponsor.totals']
     else:
-        pct_int = int(fraction * 100)
-        if pct_int:
-            percent = '%d%%' % pct_int
-            if pct_int == 100:
-                progress = '100% raised!'
-            else:
-                progress = '%d%% raised of total' % pct_int
+        sponsor_plans = SponsorTotals.get_or_insert('gitfund').get_plans()
+        to_set['sponsor.totals'] = sponsor_plans
+    backers = raised = 0
+    for plan, slots in sponsor_plans.iteritems():
+        raised += slots * PLAN_FACTORS[plan]
+        backers += slots
+    if 'donor.totals' in cache:
+        donors = cache['donor.totals']
+    else:
+        donors = DonorTotals.get_or_insert('gitfund').count
+        to_set['donor.totals'] = donors
+    if to_set:
+        set_cache_multi(to_set, 60)
+    backers += donors
+    raised += donors * PLAN_FACTORS['donor']
+    if not raised:
+        percent = 0
+        progress = ''
+    else:
+        pct = (raised / CAMPAIGN_TARGET_FACTOR) * 100
+        if pct > 1:
+            percent = int(pct)
         else:
-            percent = '1%'
-            progress = '%.2f%% raised of total' % (fraction * 100)
-    return Totals(sponsors, raised, plans, percent, progress)
+            percent = 1
+        progress = '%.2f%%' % pct
+    return Totals(backers, donors, sponsor_plans, percent, progress)
 
 SocialProfiles = namedtuple('SocialProfiles', ['github', 'repo', 'twitter'])
 
@@ -374,7 +339,7 @@ def get_sponsors():
         'bronze': [],
     }
     for sponsor in User.all().filter('sponsor =', True).order(
-        'sponsorship_started'
+        'backing_started'
         ).run(batch_size=100):
         sponsors[sponsor.plan].append({
             'img': sponsor.get_image_spec(),
@@ -696,21 +661,22 @@ def validate_vat_id(vat_id, attempts, deadline=20):
     return info
 
 # -----------------------------------------------------------------------------
-# Sponsorship Subscription
+# Backing Subscription
 # -----------------------------------------------------------------------------
 
 STRIPE_ERROR = "Sorry, there was an unexpected error with our payment processor. Please try again later."
 
-def cancel_sponsorship_txn(user_id, totals_need_syncing=True):
+def cancel_backing_txn(user_id, totals_need_syncing=True):
     user = User.get_by_id(user_id)
-    if not user.sponsor:
+    if not user.backer:
         return user
+    user.backer = False
+    user.backing_started = None
     user.delinquent = False
     user.delinquent_emailed = False
+    user.payment_type = ''
     user.plan = ''
     user.sponsor = False
-    user.sponsor_type = ''
-    user.sponsorship_started = None
     user.stripe_is_unpaid = False
     user.stripe_needs_updating = False
     if user.stripe_subscription:
@@ -730,7 +696,7 @@ def cancel_stripe_subscription(user_id, sub_id):
             "Error retrieving Stripe subscription %s for %s: %r"
             % (sub_id, user_id, e)
         )
-        return "Sorry, there was an error accessing your sponsorship subscription. Please try again later."
+        return "Sorry, there was an error accessing your subscription. Please try again later."
     if sub.status != 'canceled':
         try:
             sub.delete()
@@ -739,7 +705,7 @@ def cancel_stripe_subscription(user_id, sub_id):
                 "Error cancelling Stripe subscription %s for %s: %r"
                 % (sub.id, user_id, e)
             )
-            return "Sorry, there was an error cancelling your sponsorship. Please try again later."
+            return "Sorry, there was an error cancelling your subscription. Please try again later."
     def txn():
         user = User.get_by_id(user_id)
         if sub_id in user.stripe_needs_cancelling:
@@ -756,7 +722,7 @@ def check_subscription_status(ctx, user, user_id):
             "Error retrieving Stripe subscription %s for %s: %r"
             % (sub_id, user_id, e)
         )
-        return "Sorry, there was an error accessing your sponsorship subscription. Please try again later."
+        return "Sorry, there was an error accessing your subscription. Please try again later."
     status = sub.status
     def txn():
         user = User.get_by_id(user_id)
@@ -778,9 +744,9 @@ def check_subscription_status(ctx, user, user_id):
             user.delinquent = False
             user.delinquent_emailed = False
             user.plan = ''
-            user.sponsor = False
-            user.sponsor_type = ''
-            user.sponsorship_started = None
+            user.backer = False
+            user.payment_type = ''
+            user.backing_started = None
             user.stripe_is_unpaid = False
             user.stripe_needs_updating = False
             user.stripe_subscription = ''
@@ -792,7 +758,7 @@ def check_subscription_status(ctx, user, user_id):
         return user
     user = run_in_transaction(txn)
     if user.delinquent and not user.delinquent_emailed:
-        authlink = ctx.compute_url('login', 'sponsor.gitfund', email=user.email, existing='1')
+        authlink = ctx.compute_url('login', 'back.gitfund', email=user.email, existing='1')
         err = ctx.send_email(
             "Payment failure. Please update your card details",
             user.name, user.email, 'delinquent', authlink=authlink
@@ -807,12 +773,11 @@ def check_subscription_status(ctx, user, user_id):
         run_in_transaction(mark_as_emailed)
 
 def get_stripe_plan(plan, territory):
-    if territory in ('GB', 'IM'):
-        return "%s.v%d.gb" % (plan, PLAN_VERSION)
-    return "%s.v%d" % (plan, PLAN_VERSION)
+    idx = PRICES_POS[plan + '-plan-id']
+    return PRICES_INDEX[TERRITORY2PRICES[territory]][idx]
 
 def handle_cancellation(user_id, totals_need_syncing=True):
-    user = run_in_transaction(cancel_sponsorship_txn, user_id, totals_need_syncing)
+    user = run_in_transaction(cancel_backing_txn, user_id, totals_need_syncing)
     err = handle_stripe_cancellation(user, user_id)
     return user, err
 
@@ -824,7 +789,7 @@ def handle_stripe_cancellation(user, user_id):
             err = stripe_err
     return err
 
-def sync_sponsor(ctx, user, first_time=False):
+def sync_backer(ctx, user, first_time=False):
     err = []
     user_id = user.key().id()
     # Sync the totals.
@@ -927,7 +892,7 @@ def sync_sponsor(ctx, user, first_time=False):
             err.append(_err)
     if err:
         logging.error(
-            "There were issues syncing sponsorship info for %s: %r"
+            "There were issues syncing backer info for %s: %r"
             % (user_id, err)
         )
     return err
@@ -1008,6 +973,60 @@ def read(path):
 strptime = datetime.strptime
 
 # -----------------------------------------------------------------------------
+# Campaign Content Rendering
+# -----------------------------------------------------------------------------
+
+TOTAL_SLOTS = sum(PLAN_SLOTS.values())
+URGE_SPONSOR = """, or even better, by getting your company
+<a href="/back.gitfund?plan=bronze">to sponsor GitFund</a> &mdash; """
+
+def process_campaign_content():
+    segments = []; append = segments.append
+    for segment in render_markdown(read('page/gitfund.md')).split('VAR'):
+        if not segment.startswith('-'):
+            append(segment)
+            continue
+        varname, content = segment.split('-SLOT')
+        varname = varname[1:].lower()
+        if varname == 'available':
+            append((varname, -1))
+        else:
+            append((varname, PRICES_POS[varname]))
+        append(content)
+    return segments
+
+def render_campaign_content(ctx, territory, taken):
+    segments = []; append = segments.append
+    prices = PRICES_INDEX[TERRITORY2PRICES[territory]]
+    for segment in CONTENT_SEGMENTS:
+        if isinstance(segment, basestring):
+            append(segment)
+        else:
+            ident, idx = segment
+            if ident == 'available':
+                avail = max(TOTAL_SLOTS - sum(taken.values()), 0)
+                avail = TOTAL_SLOTS
+                if avail:
+                    append(URGE_SPONSOR)
+                    if avail == TOTAL_SLOTS:
+                        append('there are only %d sponsorship slots available.' % avail)
+                    elif avail == 1:
+                        append('there is only %d sponsorship slot left.' % avail)
+                    else:
+                        append('there are only %d sponsorship slots left.' % avail)
+                else:
+                    append('.')
+            else:
+                append('<span class="price-info-%s">' % ident)
+                append(prices[idx])
+                append('</span>')
+    return u''.join(segments)
+
+CONTENT_SEGMENTS = process_campaign_content()
+
+Context.render_campaign_content = render_campaign_content
+
+# -----------------------------------------------------------------------------
 # Handlers
 # -----------------------------------------------------------------------------
 
@@ -1043,23 +1062,231 @@ def auth(ctx, token=None, return_to=None):
     ctx.set_secure_cookie('auth', user_id)
     raise Redirect('/' + return_to)
 
-@handle(['cancel.sponsorship', 'site'], anon=False)
-def cancel_sponsorship(ctx, xsrf=None):
-    ctx.page_title = "Cancel Sponsorship"
+@handle(['back.gitfund', 'site'])
+def back_gitfund(
+    ctx, name='', email='', plan='', territory='', tax_id='', card='',
+    xsrf=None
+    ):
+    ctx.page_title = "Back GitFund!"
+    ctx.stripe_js = True
+    if not LIVE:
+        ctx.preview_mode = True
+    kwargs = {
+        'card': card,
+        'email': email,
+        'name': name,
+        'plan': plan,
+        'tax_id': tax_id,
+        'territory': territory,
+    }
     user = ctx.user
-    if not user.sponsor:
+    if user:
+        kwargs['email'] = user.email
+        kwargs['exists'] = True
+        kwargs['exists_plan'] = user.plan
+    if not xsrf:
+        if user:
+            kwargs['name'] = user.name
+            if plan:
+                kwargs['plan'] = plan
+            else:
+                kwargs['plan'] = user.plan
+            kwargs['tax_id'] = user.tax_id
+            kwargs['tax_id_is_invalid'] = user.tax_id_is_invalid
+            kwargs['territory'] = user.territory
+        return kwargs
+    ctx.log(kwargs)
+    # Validate input.
+    ctx.validate_xsrf(xsrf)
+    def error(msg, html=False):
+        if html:
+            kwargs['error_html'] = msg
+        else:
+            kwargs['error'] = msg
+        return kwargs
+    if not user:
+        name = name.strip()
+        if not name:
+            return error("Please specify your name.")
+        if len(name.encode('utf-8')) > 60:
+            return error("Your name must be less than 60 bytes long.")
+        email = email.strip()
+        if not email:
+            return error("Please provide your email address.")
+        if not is_email(email):
+            return error("Please provide a valid email address.")
+    if plan not in PLAN_FACTORS:
+        return error("Please select a support tier.")
+    if territory not in TERRITORY_CODES:
+        return error("Please select your country.")
+    tax_id = ''
+    if territory in TERRITORY2TAX:
+        if plan != 'donor':
+            tax_id = tax_id.strip()
+            if (not tax_id) or (len(tax_id) < 4):
+                return error("Please provide your VAT ID.")
+            tax_prefix = TERRITORY2TAX[territory][0]
+            if tax_id[:2].upper() != tax_prefix:
+                return error("Please provide a VAT ID for the selected country.")
+            if user and user.tax_id == tax_id:
+                if user.tax_id_to_validate:
+                    validate = True
+                elif user.tax_id_is_invalid:
+                    return error(INVALID_VAT_ID)
+                else:
+                    tax_info = user.tax_id_detailed
+                    validate = False
+            else:
+                validate = True
+            if validate:
+                tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
+                if is_invalid:
+                    return error(INVALID_VAT_ID)
+    kwargs['card'] = ''
+    card = card.strip()
+    # Check if we already have a Sponsor record for the given email address.
+    def existing_backer():
+        link = ctx.compute_url("login", "back.gitfund", email=email, existing=1)
+        return error(
+            'There is already an active backing set up for %s. Please <a href="%s">sign in</a> to update your details.'
+            % (escape(email), link), html=True
+        )
+    if user:
+        user_id = ctx.user_id
+    else:
+        user = get_user_from_email(email) # COST(2)
+        if user and user.backer:
+            return existing_backer()
+        # Create a new user if there's no existing user record.
+        if user is None:
+            user = create_user(name, email) # COST(2-4)
+        user_id = user.key().id()
+        ctx._user_id = user_id
+        ctx._user = user
+        ctx.set_secure_cookie('auth', str(user_id))
+        kwargs['exists'] = True
+    # Create a Stripe Customer record if it doesn't exist.
+    if user.stripe_customer_id:
+        cus_exists = True
+    else:
+        try:
+            customer = stripe.Customer.create(email=email) # COST(1)
+        except Exception as e:
+            logging.error("Error creating Stripe customer with email %s: %r" % (email, e))
+            return error(STRIPE_ERROR)
+        def txn():
+            user = User.get_by_id(user_id)
+            if user.stripe_customer_id:
+                return user, True
+            user.stripe_customer_id = customer.id
+            user.put()
+            return user, False
+        user, cus_exists = run_in_transaction(txn) # COST(1)
+        ctx._user = user
+    # Ensure card token exists where customer hasn't already been created.
+    if (not cus_exists) and (not card):
+        return error("Please enable JavaScript before filling in your card details.")
+    if card:
+        # Retrieve the existing customer if it already exists.
+        if cus_exists:
+            try:
+                customer = stripe.Customer.retrieve(user.stripe_customer_id)
+            except Exception as e:
+                logging.error("Error retrieving Stripe customer %s: %r" % (user.stripe_customer_id, e))
+                return error(STRIPE_ERROR)
+        # Add the new card as the default source.
+        try:
+            customer.default_source = customer.sources.create(source=card).id # COST(1)
+            customer.save() # COST(1)
+        except stripe.error.CardError as e:
+            logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
+            return error("Sorry, there was an error processing your payment: %s" % e.json_body['error']['message'])
+        except Exception as e:
+            logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
+            return error(STRIPE_ERROR)
+    # Check that a sponsorship slot is available.
+    if plan != user.plan and plan in PLAN_SLOTS:
+        slots = PLAN_SLOTS[plan]
+        totals = SponsorTotals.get_by_key_name('gitfund') # COST(1)
+        plans = totals.get_plans()
+        if plans[plan] >= slots:
+            return error("Sorry, there are no %s sponsorship slots left." % plan.title())
+    # Set up or update sponsorship.
+    def txn():
+        user = User.get_by_id(user_id)
+        user.payment_type = 'stripe'
+        first_time = False
+        if not user.backer:
+            first_time = True
+            user.backer = True
+            user.backing_started = datetime.utcnow()
+        new_stripe_plan = get_stripe_plan(plan, territory)
+        if user.plan:
+            existing_stripe_plan = get_stripe_plan(user.plan, user.territory)
+            if plan != user.plan:
+                user.totals_need_syncing = True
+                user.totals_version += 1
+        else:
+            existing_stripe_plan = ''
+            if plan != 'donor':
+                user.totals_need_syncing = True
+                user.totals_version += 1
+        user.plan = plan
+        if existing_stripe_plan != new_stripe_plan:
+            if user.stripe_subscription:
+                user.stripe_needs_cancelling.append(user.stripe_subscription)
+            user.stripe_needs_updating = True
+            user.stripe_subscription = ''
+            user.stripe_update_version += 1
+        elif card and not user.stripe_subscription:
+            user.stripe_update_version += 1
+        if tax_id:
+            user.tax_id = tax_id
+            if tax_info:
+                user.tax_id_detailed = tax_info
+                user.tax_id_to_validate = False
+                user.tax_id_is_invalid = False
+            else:
+                user.tax_id_detailed = ''
+                user.tax_id_to_validate = True
+                user.tax_id_is_invalid = False
+        else:
+            user.tax_id = ''
+            user.tax_id_detailed = ''
+            user.tax_id_to_validate = False
+            user.tax_id_is_invalid = False
+        user.territory = territory
+        user.put()
+        return user, first_time
+    user, first_time = run_in_transaction(txn) # COST(1)
+    ctx._user = user
+    err = sync_backer(ctx, user, first_time)
+    if err:
+        return error(err[0])
+    delete_cache(['sponsors', 'sponsor.totals', 'donor.totals'])
+    if user.sponsor and (not user.link_text) and (not user.link_url):
+        raise Redirect('/update.sponsor.profile?setup=1')
+    if first_time:
+        raise Redirect('/tav/gitfund?thanks=1')
+    return {'updated': True}
+
+@handle(['cancel.subscription', 'site'], anon=False)
+def cancel_subscription(ctx, xsrf=None):
+    ctx.page_title = "Cancel Subscription"
+    user = ctx.user
+    if not user.backer:
         return {
-            'error': "Sorry, no active sponsorships found for %s." % user.email
+            'error': "Sorry, no active subscription found for %s." % user.email
         }
     if xsrf is None:
         return {
-            'sponsor': user
+            'backer': user
         }
     ctx.validate_xsrf(xsrf)
     _, err = handle_cancellation(ctx.user_id)
     if err:
         return {'error': err}
-    delete_cache('sponsors')
+    delete_cache(['sponsors', 'sponsor.totals', 'donor.totals'])
     return {'cancelled': True}
 
 @handle(['community', 'site'])
@@ -1091,6 +1318,38 @@ def community(ctx, email=None, xsrf=''):
         return {'error': "Sorry, there was an unexpected error. Please try again later."}
     return {'sent': True}
 
+@handle(admin=True)
+def compare_currencies(ctx):
+    rates = decode_json(
+        ExchangeRates.get_by_key_name('latest').data, parse_float=Decimal
+        )['rates']
+    data = []
+    usd_value = BASE_PRICES['USD'][-1]
+    dec_places_2 = Decimal('0.01')
+    dec_places_4 = Decimal('0.0001')
+    for currency in BASE_PRICES:
+        value = Decimal(BASE_PRICES[currency][-1])
+        current = rates[currency] * usd_value
+        cur_dec = Decimal(current).quantize(dec_places_2, ROUND_HALF_UP)
+        ratio = (value / current).quantize(dec_places_4, ROUND_HALF_UP)
+        data.append((currency, ratio, cur_dec, value))
+    data = sorted(data, key=lambda row: (row[1], row[0]))
+    ctx.response_headers['Content-Type'] = 'text/plain'
+    hdr = 'Symbol\t\tRatio\t\tCurrent\t\tPreset\n\n'
+    return hdr + '\n'.join("%s\t\t%s%17s%15s" % row for row in data)
+
+@handle
+def cron_donors(ctx):
+    count = 0
+    for backer in User.all().filter('backer =', True).filter(
+        'sponsor =', False
+    ).run(batch_size=1000, keys_only=True):
+        count += 1
+    totals = DonorTotals.get_or_insert('gitfund')
+    totals.count = count
+    totals.put()
+    return 'OK'
+
 @handle
 def cron_github(ctx):
     for username in GITHUB_PROFILES:
@@ -1116,11 +1375,32 @@ def cron_github(ctx):
     return 'OK'
 
 @handle
+def cron_fxrates(ctx):
+    rates = ExchangeRates.get_or_insert('latest')
+    if rates.data and ((datetime.utcnow() - rates.updated) <= timedelta(hours=1)):
+        return
+    try:
+        resp = urlfetch(
+            'https://openexchangerates.org/api/latest.json?app_id=%s'
+            % OPEN_EXCHANGE_RATES_APP_ID
+            )
+        if resp.status_code != 200:
+            raise ValueError("Got unexpected response code: %d" % resp.status_code)
+        data = resp.content
+        decode_json(data, parse_float=Decimal)['rates']
+        rates.data = data
+        rates.put()
+        delete_cache('fxrates')
+    except Exception, err:
+        logging.exception("Couldn't fetch exchange rates: %s" % err)
+    return 'OK'
+
+@handle
 def cron_sync(ctx):
     for user in User.all().filter(
         'updated <=', datetime.utcnow() - timedelta(minutes=10)
     ).order('updated'):
-        sync_sponsor(ctx, user)
+        sync_backer(ctx, user)
 
 @handle
 def cron_twitter(ctx):
@@ -1168,7 +1448,7 @@ def login(ctx, return_to='', email='', existing=False, xsrf=None):
     else:
         intent = ['log in into', 'account']
         intent_button = 'Login Link'
-        return_to = 'manage.sponsorship'
+        return_to = 'manage.subscription'
     authlink = ctx.compute_url('auth', token, return_to)
     err = ctx.send_email(
         intent_button, user.name, user.email, 'authlink',
@@ -1188,9 +1468,9 @@ def logout(ctx):
     ctx.expire_cookie('admin')
     raise Redirect('/')
 
-@handle(['manage.sponsorship', 'site'], anon=False)
-def manage_sponsorship(ctx):
-    ctx.page_title = "Manage Sponsorship"
+@handle(['manage.subscription', 'site'], anon=False)
+def manage_subscription(ctx):
+    ctx.page_title = "Manage Subscription"
 
 @handle
 def readme_image(ctx, plan=None, size='300'):
@@ -1240,220 +1520,36 @@ def site(ctx, page=None, cache={}):
     text = read('page/%s.md' % page)
     return cache.setdefault(page, render_markdown(text))
 
+@handle(['site.donors', 'site'])
+def site_donors(ctx, cursor=None):
+    ctx.page_title = "Our Donors"
+    q = User.all().filter('backer =', True).filter(
+        'sponsor =', False).order('backing_started')
+    if cursor:
+        q = q.with_cursor(cursor)
+        cursor = None
+    donors = []
+    prev_point = None
+    idx = 0
+    for donor in q.run(batch_size=100):
+        idx += 1
+        if idx == 100:
+            cursor = prev_point
+            break
+        elif idx == 99:
+            prev_point = q.cursor()
+        donors.append(donor)
+    return {
+        'cursor': cursor,
+        'donors': donors,
+    }
+
 @handle(['site.sponsors', 'site'])
 def site_sponsors(ctx, cursor=None):
     ctx.page_title = "Our Sponsors"
     return {
         'sponsors': get_local('sponsors')
     }
-
-@handle(['sponsor.gitfund', 'site'])
-def sponsor_gitfund(
-    ctx, name='', email='', plan='', territory='', tax_id='', card='',
-    xsrf=None
-    ):
-    ctx.page_title = "Sponsor GitFund!"
-    ctx.stripe_js = True
-    if not LIVE:
-        ctx.preview_mode = True
-    kwargs = {
-        'card': card,
-        'email': email,
-        'name': name,
-        'plan': plan,
-        'tax_id': tax_id,
-        'territory': territory,
-    }
-    user = ctx.user
-    if user:
-        kwargs['email'] = user.email
-        kwargs['exists'] = True
-        kwargs['exists_plan'] = user.plan
-    if not xsrf:
-        if user:
-            kwargs['name'] = user.name
-            if plan:
-                kwargs['plan'] = plan
-            else:
-                kwargs['plan'] = user.plan
-            kwargs['tax_id'] = user.tax_id
-            kwargs['tax_id_is_invalid'] = user.tax_id_is_invalid
-            kwargs['territory'] = user.territory
-        return kwargs
-    ctx.log(kwargs)
-    # Validate input.
-    ctx.validate_xsrf(xsrf)
-    def error(msg, html=False):
-        if html:
-            kwargs['error_html'] = msg
-        else:
-            kwargs['error'] = msg
-        return kwargs
-    if not user:
-        name = name.strip()
-        if not name:
-            return error("Please specify your name.")
-        if len(name.encode('utf-8')) > 60:
-            return error("Your name must be less than 60 bytes long.")
-        email = email.strip()
-        if not email:
-            return error("Please provide your email address.")
-        if not is_email(email):
-            return error("Please provide a valid email address.")
-    if plan not in PLAN_AMOUNTS:
-        return error("Please select a sponsorship tier.")
-    if territory not in TERRITORY_CODES:
-        return error("Please select your country.")
-    if territory in TERRITORY2TAX:
-        tax_id = tax_id.strip()
-        tax_prefix = TERRITORY2TAX[territory][0]
-        if tax_prefix == 'GB' and ((not tax_id) or (tax_id == 'GB')):
-            tax_id = ''
-        else:
-            if (not tax_id) or (len(tax_id) < 4):
-                return error("Please provide your VAT ID.")
-            if tax_id[:2].upper() != tax_prefix:
-                return error("Please provide a VAT ID for the selected country.")
-            if user and user.tax_id == tax_id:
-                if user.tax_id_to_validate:
-                    validate = True
-                elif user.tax_id_is_invalid:
-                    return error(INVALID_VAT_ID)
-                else:
-                    tax_info = user.tax_id_detailed
-                    validate = False
-            else:
-                validate = True
-            if validate:
-                tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
-                if is_invalid:
-                    return error(INVALID_VAT_ID)
-    else:
-        tax_id = ''
-    kwargs['card'] = ''
-    card = card.strip()
-    # Check if we already have a Sponsor record for the given email address.
-    def existing_sponsor():
-        link = ctx.compute_url("login", "sponsor.gitfund", email=email, existing=1)
-        return error(
-            'There is already an active sponsorship set up for %s. Please <a href="%s">sign in</a> to update your sponsorship details.'
-            % (escape(email), link), html=True
-        )
-    if user:
-        user_id = ctx.user_id
-    else:
-        user = get_user_from_email(email) # COST(2)
-        if user and user.sponsor:
-            return existing_sponsor()
-        # Create a new user if there's no existing user record.
-        if user is None:
-            user = create_user(name, email) # COST(2-4)
-        user_id = user.key().id()
-        ctx._user_id = user_id
-        ctx._user = user
-        ctx.set_secure_cookie('auth', str(user_id))
-        kwargs['exists'] = True
-    # Create a Stripe Customer record if it doesn't exist.
-    if user.stripe_customer_id:
-        cus_exists = True
-    else:
-        try:
-            customer = stripe.Customer.create(email=email) # COST(1)
-        except Exception as e:
-            logging.error("Error creating Stripe customer with email %s: %r" % (email, e))
-            return error(STRIPE_ERROR)
-        def txn():
-            user = User.get_by_id(user_id)
-            if user.stripe_customer_id:
-                return user, True
-            user.stripe_customer_id = customer.id
-            user.put()
-            return user, False
-        user, cus_exists = run_in_transaction(txn) # COST(1)
-        ctx._user = user
-    # Ensure card token exists where customer hasn't already been created.
-    if (not cus_exists) and (not card):
-        return error("Please enable JavaScript before filling in your card details.")
-    new_card = False
-    if card:
-        # Retrieve the existing customer if it already exists.
-        if cus_exists:
-            try:
-                customer = stripe.Customer.retrieve(user.stripe_customer_id)
-            except Exception as e:
-                logging.error("Error retrieving Stripe customer %s: %r" % (user.stripe_customer_id, e))
-                return error(STRIPE_ERROR)
-        # Add the new card as the default source.
-        try:
-            customer.default_source = customer.sources.create(source=card).id # COST(1)
-            customer.save() # COST(1)
-            new_card = True
-        except stripe.error.CardError as e:
-            logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
-            return error("Sorry, there was an error processing your payment: %s" % e.json_body['error']['message'])
-        except Exception as e:
-            logging.error("Error adding card to Stripe customer %s: %r" % (user.stripe_customer_id, e))
-            return error(STRIPE_ERROR)
-    # Check that a sponsorship slot is available.
-    if plan != user.plan:
-        slots = PLAN_SLOTS[plan]
-        totals = SponsorTotals.get_by_key_name('gitfund') # COST(1)
-        plans = totals.get_plans()
-        if plans[plan] >= slots:
-            return error("Sorry, there are no %s sponsorship slots left." % plan.title())
-    # Set up or update sponsorship.
-    def txn():
-        user = User.get_by_id(user_id)
-        user.sponsor_type = 'stripe'
-        first_time = False
-        if not user.sponsor:
-            first_time = True
-            user.sponsor = True
-            user.sponsorship_started = datetime.utcnow()
-        new_stripe_plan = get_stripe_plan(plan, territory)
-        if user.plan:
-            existing_stripe_plan = get_stripe_plan(user.plan, user.territory)
-        else:
-            existing_stripe_plan = ''
-        if plan != user.plan:
-            user.plan = plan
-            user.totals_need_syncing = True
-            user.totals_version += 1
-        if existing_stripe_plan != new_stripe_plan:
-            if user.stripe_subscription:
-                user.stripe_needs_cancelling.append(user.stripe_subscription)
-            user.stripe_needs_updating = True
-            user.stripe_subscription = ''
-            user.stripe_update_version += 1
-        elif new_card and not user.stripe_subscription:
-            user.stripe_update_version += 1
-        if tax_id:
-            user.tax_id = tax_id
-            if tax_info:
-                user.tax_id_detailed = tax_info
-                user.tax_id_to_validate = False
-                user.tax_id_is_invalid = False
-            else:
-                user.tax_id_detailed = ''
-                user.tax_id_to_validate = True
-                user.tax_id_is_invalid = False
-        else:
-            user.tax_id = ''
-            user.tax_id_detailed = ''
-            user.tax_id_to_validate = False
-            user.tax_id_is_invalid = False
-        user.territory = territory
-        user.put()
-        return user, first_time
-    user, first_time = run_in_transaction(txn) # COST(1)
-    ctx._user = user
-    err = sync_sponsor(ctx, user, first_time)
-    if err:
-        return error(err[0])
-    delete_cache('sponsors')
-    if (not user.link_text) and (not user.link_url):
-        raise Redirect('/update.sponsor.profile?setup=1')
-    return {'updated': True}
 
 @handle
 def sponsor_image(ctx, id, height=None):
@@ -1501,6 +1597,7 @@ def tav(ctx, project='', thanks=None, **kwargs):
     ctx.site_title = CAMPAIGN_TITLE
     return {
         'social': get_local('social.profiles'),
+        'territory': ctx.get_territory(),
         'totals': get_local('totals'),
         'thanks': thanks,
     }
@@ -1611,40 +1708,35 @@ def validate_vat(ctx, vat_id):
 
 if not LIVE:
 
-    @handle(admin=True)
-    def login_as(ctx, email, country='GB', plan='gold', name=None):
-        # TODO(tav): Protect against XSRF.
-        if not name:
-            name = email.split('@')[0]
-        user_id = create_user(name, email).key().id()
-        def txn2(user_id):
-            user = User.get_by_id(user_id)
-            user.country = country
-            user.plan = plan
-            user.sponsor = True
-            user.sponsor_type = 'manual'
-            user.sponsorship_started = datetime.utcnow()
-            user.put()
-        run_in_transaction(txn2, user_id)
-        ctx.set_secure_cookie('auth', str(user_id))
-        raise Redirect('/manage.sponsorship')
+    def xsrf_url(ctx, **kwargs):
+        url = escape(ctx.compute_url(ctx.name, xsrf=ctx.xsrf_token, **kwargs))
+        return '<a href="%s">%s</a>' % (url, url)
 
     @handle(admin=True)
-    def site_bootstrap(ctx):
+    def site_bootstrap(ctx, xsrf=None):
+        if not xsrf:
+            return xsrf_url(ctx)
+        ctx.validate_xsrf(xsrf)
         cron_github(ctx)
         cron_twitter(ctx)
         return 'OK'
 
     @handle(admin=True)
-    def site_flush(ctx):
+    def site_flush(ctx, xsrf=None):
+        if not xsrf:
+            return xsrf_url(ctx)
+        ctx.validate_xsrf(xsrf)
         flush_all()
         return 'OK'
 
     @handle(admin=True)
-    def site_wipe(ctx):
+    def site_wipe(ctx, xsrf=None):
+        if not xsrf:
+            return xsrf_url(ctx)
+        ctx.validate_xsrf(xsrf)
         for model in [
-            GitHubProfile, GitHubRepo, Login, SponsorRecord, SponsorTotals,
-            StripeEvent, TwitterProfile, User
+            ExchangeRates, DonorTotals, GitHubProfile, GitHubRepo, Login,
+            SponsorRecord, SponsorTotals, StripeEvent, TwitterProfile, User
         ]:
             for entity in model.all():
                 db.delete(entity)
@@ -1655,15 +1747,6 @@ if not LIVE:
 # ------------------------------------------------------------------------------
 # Init Local State
 # ------------------------------------------------------------------------------
-
-MORE_BLOCK_LINK = '<a class="more-link" id="more-link" href="">Read more</a>'
-
-Context.CAMPAIGN_CONTENT = render_markdown(read('page/gitfund.md')).replace(
-    '<p>MORE-BLOCK-LINK</p>', MORE_BLOCK_LINK).replace(
-    '<p>MORE-BLOCK-START</p>', '<div class="more-block">').replace(
-    '<p>MORE-BLOCK-END</p>', '</div>')
-
-Context.CAMPAIGN_GOAL = render_markdown(CAMPAIGN_GOAL)
 
 def init_state():
 
