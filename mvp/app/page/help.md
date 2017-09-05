@@ -39,7 +39,7 @@ associated with an account. We will do so for the Beta release though.
 ### How do I change my password?
 
 We use a passwordless system to authenticate users on the site. When you want to
-sign in, we'll send you an email that contains a special authorised link.
+sign in, we'll send you an email that contains a special authorized link.
 
 ### How do I cancel my donation/sponsorship?
 
