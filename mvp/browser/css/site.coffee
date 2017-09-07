@@ -916,7 +916,6 @@ module.exports = (api) ->
         padding: '0px 0px 3px 0px'
         margin: '0px'
         fontSize: '12px'
-        # letterSpacing: '1px'
         textTransform: 'uppercase'
 
     '.progress-bar':
@@ -1302,6 +1301,18 @@ module.exports = (api) ->
     #   color: '#5d90cd'
     # '.syntax.yaml .p-Indicator':
     #   color: '#101010'
+
+    '.submit-loader':
+      background: '#2bde73'
+      color: '#fff'
+      display: 'none'
+      fontSize: '20px'
+      marginBottom: '10px'
+      padding: '15px 10px'
+      width: '300px'
+      '@media all and (max-width: 922px)':
+        marginBottom: '0'
+        width: '100%'
 
     '.team-profile-follow':
       paddingBottom: '20px'

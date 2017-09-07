@@ -255,12 +255,9 @@ defpkg('app', function(exports, root) {
         $expMonth = doc.$('card-exp-month'),
         $expYear = doc.$('card-exp-year'),
         $cvc = doc.$('card-cvc'),
-        $submitButton = doc.$('submit'),
+        $submitButton = doc.$('submit-button'),
         $submitConfirm = doc.$('submit-confirm'),
-        isUpdateForm = $email == null,
-        PLANS = root.PLANS,
-        PLANS_INDEX = root.PLANS_INDEX,
-        TAX_PREFIXES = root.TAX_PREFIXES;
+        isSignupForm = $email !== null;
     var cardTypes = {
       'American Express': {
         hide: [$mastercard, $visa],
@@ -385,7 +382,7 @@ defpkg('app', function(exports, root) {
         return true;
       }
     };
-    if (!isUpdateForm) {
+    if (isSignupForm) {
       $name.addEventListener('input', function() {
         if (submitted && isValidName($name.value)) {
           hideError('backer-name');
@@ -458,97 +455,95 @@ defpkg('app', function(exports, root) {
     };
     $taxID.addEventListener('keypress', handleTaxID);
     $taxID.addEventListener('input', handleTaxID);
-    $number.addEventListener('keypress', function(e) {
-      // Ignore browser shortcuts and special characters.
-      if (e.metaKey || e.ctrlKey || e.which < 32) {
-        return;
-      }
-      // Only allow digits to be entered.
-      var input = String.fromCharCode(e.which);
-      if (!/\d/.test(input)) {
-        e.preventDefault();
-        return;
-      }
-      // Skip further restrictions if the input element has any selected text.
-      if (hasSelection($number)) {
-        return;
-      }
-      var number = $number.value + input,
-          cardInfo = cardTypes[Stripe.card.cardType(number)];
-      if (!cardInfo) {
-        cardInfo = cardTypes['Unknown'];
-      }
-      // Limit the max length based on the card type.
-      if (number.replace(/\D/g, '').length > cardInfo.maxLength) {
-        e.preventDefault();
-      }
-    });
-    $number.addEventListener('input', function() {
-      var number = $number.value,
-          cardInfo = cardTypes[Stripe.card.cardType(number)];
-      if (!cardInfo) {
-        cardInfo = cardTypes['Unknown'];
-      }
-      cardInfo.show.forEach(function(el) { undim(el); });
-      cardInfo.hide.forEach(function(el) { dim(el); });
-      // Format only when the caret is at the end of the input element.
-      if (number.length === $number.selectionEnd) {
-        var value = number.replace(/\D/g, '').slice(0, cardInfo.maxLength);
-        if (cardInfo.format.global) {
-          var match = value.match(cardInfo.format);
-          if (match) {
-            value = trim(match.join(' '));
-            if (value !== number) {
-              $number.value = value;
-              number = value;
+    if ($number) {
+      $number.addEventListener('keypress', function(e) {
+        // Ignore browser shortcuts and special characters.
+        if (e.metaKey || e.ctrlKey || e.which < 32) {
+          return;
+        }
+        // Only allow digits to be entered.
+        var input = String.fromCharCode(e.which);
+        if (!/\d/.test(input)) {
+          e.preventDefault();
+          return;
+        }
+        // Skip further restrictions if the input element has any selected text.
+        if (hasSelection($number)) {
+          return;
+        }
+        var number = $number.value + input,
+            cardInfo = cardTypes[Stripe.card.cardType(number)];
+        if (!cardInfo) {
+          cardInfo = cardTypes['Unknown'];
+        }
+        // Limit the max length based on the card type.
+        if (number.replace(/\D/g, '').length > cardInfo.maxLength) {
+          e.preventDefault();
+        }
+      });
+      $number.addEventListener('input', function() {
+        var number = $number.value,
+            cardInfo = cardTypes[Stripe.card.cardType(number)];
+        if (!cardInfo) {
+          cardInfo = cardTypes['Unknown'];
+        }
+        cardInfo.show.forEach(function(el) { undim(el); });
+        cardInfo.hide.forEach(function(el) { dim(el); });
+        // Format only when the caret is at the end of the input element.
+        if (number.length === $number.selectionEnd) {
+          var value = number.replace(/\D/g, '').slice(0, cardInfo.maxLength);
+          if (cardInfo.format.global) {
+            var match = value.match(cardInfo.format);
+            if (match) {
+              value = trim(match.join(' '));
+              if (value !== number) {
+                $number.value = value;
+                number = value;
+              }
             }
-          }
-        } else {
-          var groups = cardInfo.format.exec(value);
-          if (groups) {
-            groups.shift();
-            value = trim(groups.join(' '));
-            if (value !== number) {
-              $number.value = value;
-              number = value;
+          } else {
+            var groups = cardInfo.format.exec(value);
+            if (groups) {
+              groups.shift();
+              value = trim(groups.join(' '));
+              if (value !== number) {
+                $number.value = value;
+                number = value;
+              }
             }
           }
         }
-      }
-      if (submitted && isValidNumber(number)) {
-        hideError('card-number');
-      }
-    });
-    var handleExp = function() {
-      if (submitted && isValidExpiration(getExpMonth(), getExpYear())) {
-        hideError('card-exp');
-      }
-    };
-    $expMonth.addEventListener('change', handleExp);
-    $expYear.addEventListener('change', handleExp);
-    $cvc.addEventListener('keypress', function(e) {
-      // Ignore browser shortcuts and special characters.
-      if (e.metaKey || e.ctrlKey || e.which < 32) {
-        return;
-      }
-      // Only allow digits to be entered.
-      var input = String.fromCharCode(e.which);
-      if (!/\d/.test(input)) {
-        e.preventDefault();
-        return;
-      }
-    });
-    $cvc.addEventListener('input', function() {
-      if (submitted && isValidCVC($cvc.value)) {
-        hideError('card-cvc');
-      }
-    });
+        if (submitted && isValidNumber(number)) {
+          hideError('card-number');
+        }
+      });
+      var handleExp = function() {
+        if (submitted && isValidExpiration(getExpMonth(), getExpYear())) {
+          hideError('card-exp');
+        }
+      };
+      $expMonth.addEventListener('change', handleExp);
+      $expYear.addEventListener('change', handleExp);
+      $cvc.addEventListener('keypress', function(e) {
+        // Ignore browser shortcuts and special characters.
+        if (e.metaKey || e.ctrlKey || e.which < 32) {
+          return;
+        }
+        // Only allow digits to be entered.
+        var input = String.fromCharCode(e.which);
+        if (!/\d/.test(input)) {
+          e.preventDefault();
+          return;
+        }
+      });
+      $cvc.addEventListener('input', function() {
+        if (submitted && isValidCVC($cvc.value)) {
+          hideError('card-cvc');
+        }
+      });
+    }
     $form.addEventListener('submit', function(ev) {
-      var number = $number.value,
-          expMonth = getExpMonth(),
-          expYear = getExpYear(),
-          cvc = $cvc.value,
-          processCard = !isUpdateForm;
+      var processCard = false;
       ev.preventDefault();
       if (submitting) {
         return;
@@ -556,13 +551,22 @@ defpkg('app', function(exports, root) {
       submitted = true;
       submitting = true;
       errorElement = null;
-      if (isUpdateForm) {
-        if (number !== "" || expMonth !== "" || expYear !== "" || cvc !== "") {
+      if (isSignupForm) {
+        isValidName($name.value);
+        isValidEmail($email.value);
+        if ($number) {
           processCard = true;
         }
       } else {
-        isValidName($name.value);
-        isValidEmail($email.value);
+        if ($number) {
+          var number = $number.value,
+              expMonth = getExpMonth(),
+              expYear = getExpYear(),
+              cvc = $cvc.value;
+          if (number !== "" || expMonth !== "" || expYear !== "" || cvc !== "") {
+            processCard = true;
+          }
+        }
       }
       var territory = $territory.options[$territory.selectedIndex].value,
           taxPrefix = TERRITORY2TAX[territory];
@@ -571,6 +575,10 @@ defpkg('app', function(exports, root) {
         isValidTaxID(taxPrefix, $taxID.value);
       }
       if (processCard) {
+        var number = $number.value,
+            expMonth = getExpMonth(),
+            expYear = getExpYear(),
+            cvc = $cvc.value;
         isValidNumber(number);
         isValidExpiration(expMonth, expYear);
         isValidCVC(cvc);
@@ -582,6 +590,8 @@ defpkg('app', function(exports, root) {
         submitting = false;
       } else {
         if (!processCard) {
+          $('submit-button').style.display = 'none';
+          $('submit-loader').style.display = 'block';
           $form.submit();
           return
         }
@@ -603,6 +613,8 @@ defpkg('app', function(exports, root) {
             return;
           }
           doc.$('card-token').value = resp.id;
+          $('submit-button').style.display = 'none';
+          $('submit-loader').style.display = 'block';
           $form.submit();
         });
       }
