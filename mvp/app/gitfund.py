@@ -46,8 +46,8 @@ import stripe
 
 from emoji import EMOJI_MAP, EMOJI_SHORTCODES
 from finance import (
-    BASE_PRICES, CAMPAIGN_TARGET_FACTOR, CONTENT_FACTORS, PLAN_FACTORS,
-    PLAN_SLOTS, TERRITORY2TAX
+    BASE_PRICES, CAMPAIGN_TARGET_FACTOR, PLAN_FACTORS, PLAN_SLOTS,
+    TERRITORY2TAX
 )
 
 from gfm import (
@@ -266,7 +266,7 @@ def get_totals():
         donors = DonorTotals.get_or_insert('gitfund').count
         to_set['donor.totals'] = donors
     if to_set:
-        set_cache_multi(to_set, 60)
+        set_cache_multi(to_set, 20)
     backers += donors
     raised += donors * PLAN_FACTORS['donor']
     if not raised:
@@ -683,8 +683,7 @@ def cancel_backing_txn(user_id, totals_need_syncing=True):
         user.stripe_needs_cancelling.append(user.stripe_subscription)
         user.stripe_subscription = ''
     user.totals_need_syncing = totals_need_syncing
-    if totals_need_syncing:
-        user.totals_version += 1
+    user.totals_version += 1
     user.put()
     return user
 
@@ -741,12 +740,13 @@ def check_subscription_status(ctx, user, user_id):
             if user.stripe_is_unpaid:
                 user.stripe_is_unpaid = False
         elif status == 'canceled':
+            user.backer = False
+            user.backing_started = None
             user.delinquent = False
             user.delinquent_emailed = False
-            user.plan = ''
-            user.backer = False
             user.payment_type = ''
-            user.backing_started = None
+            user.plan = ''
+            user.sponsor = False
             user.stripe_is_unpaid = False
             user.stripe_needs_updating = False
             user.stripe_subscription = ''
@@ -793,16 +793,20 @@ def sync_backer(ctx, user, first_time=False):
     err = []
     user_id = user.key().id()
     # Sync the totals.
-    if user.totals_need_syncing:
+    while user.totals_need_syncing:
         totals_version = user.totals_version
         maxed = run_in_transaction(
             sync_totals_txn, str(user_id), user.plan, totals_version
         )
+        if maxed == 'old.version':
+            user = User.get_by_id(user_id)
+            continue
         if maxed:
+            plan = user.plan
             user, _err = handle_cancellation(user_id, totals_need_syncing=False)
             err.append(
                 "Sorry, there are no %s sponsorship slots left."
-                % user.plan.title()
+                % plan.title()
             )
             if _err:
                 err.append(_err)
@@ -814,6 +818,7 @@ def sync_backer(ctx, user, first_time=False):
                     user.put()
                 return user
             user = run_in_transaction(txn)
+        break
     # Create/update the Stripe subscription.
     if user.stripe_needs_updating:
         try:
@@ -862,6 +867,11 @@ def sync_backer(ctx, user, first_time=False):
             err.append(_err)
     # Skip the VAT ID and delinquency checks if it is the first time.
     if first_time:
+        if err:
+            logging.error(
+                "There were issues syncing backer info for %s: %r"
+                % (user_id, err)
+            )
         return err
     # Check the VAT ID if necessary.
     if user.tax_id_to_validate:
@@ -897,6 +907,8 @@ def sync_backer(ctx, user, first_time=False):
         )
     return err
 
+# TODO(tav): It's possible for this to return different results depending on the
+# order of retry.
 def sync_totals_txn(user_id, plan, version):
     totals = SponsorTotals.get_by_key_name('gitfund')
     plans = totals.get_plans()
@@ -904,21 +916,21 @@ def sync_totals_txn(user_id, plan, version):
     if not record:
         record = SponsorRecord(key_name=user_id, parent=totals)
     if record.version > version:
-        return
+        return 'old.version'
     if record.plan:
         plans[record.plan] -= 1
         record.plan = ''
-    if plan:
+    maxed = False
+    if plan in PLAN_SLOTS:
         if plans[plan] >= PLAN_SLOTS[plan]:
-            totals.set_plans(plans)
-            db.put([totals, record])
-            return True
-        plans[plan] += 1
-    record.plan = plan
+            maxed = True
+        else:
+            record.plan = plan
+            plans[plan] += 1
     record.version = version
     totals.set_plans(plans)
     db.put([totals, record])
-    return
+    return maxed
 
 # -----------------------------------------------------------------------------
 # Other Utility Functions
@@ -1119,9 +1131,10 @@ def back_gitfund(
         return error("Please select a support tier.")
     if territory not in TERRITORY_CODES:
         return error("Please select your country.")
-    tax_id = ''
     if territory in TERRITORY2TAX:
-        if plan != 'donor':
+        if plan == 'donor':
+            tax_id = ''
+        else:
             tax_id = tax_id.strip()
             if (not tax_id) or (len(tax_id) < 4):
                 return error("Please provide your VAT ID.")
@@ -1142,11 +1155,13 @@ def back_gitfund(
                 tax_info, is_invalid, _ = check_vat_id(tax_id) # COST(1)
                 if is_invalid:
                     return error(INVALID_VAT_ID)
+    else:
+        tax_id = ''
     kwargs['card'] = ''
     card = card.strip()
     # Check if we already have a Sponsor record for the given email address.
     def existing_backer():
-        link = ctx.compute_url("login", "back.gitfund", email=email, existing=1)
+        link = ctx.compute_url("login", "back.gitfund", email=email, existing='1')
         return error(
             'There is already an active backing set up for %s. Please <a href="%s">sign in</a> to update your details.'
             % (escape(email), link), html=True
@@ -1232,6 +1247,10 @@ def back_gitfund(
                 user.totals_need_syncing = True
                 user.totals_version += 1
         user.plan = plan
+        if plan in PLAN_SLOTS:
+            user.sponsor = True
+        else:
+            user.sponsor = False
         if existing_stripe_plan != new_stripe_plan:
             if user.stripe_subscription:
                 user.stripe_needs_cancelling.append(user.stripe_subscription)
@@ -1263,7 +1282,7 @@ def back_gitfund(
     err = sync_backer(ctx, user, first_time)
     if err:
         return error(err[0])
-    delete_cache(['sponsors', 'sponsor.totals', 'donor.totals'])
+    delete_cache_multi(['sponsors', 'sponsor.totals', 'donor.totals'])
     if user.sponsor and (not user.link_text) and (not user.link_url):
         raise Redirect('/update.sponsor.profile?setup=1')
     if first_time:
@@ -1283,10 +1302,13 @@ def cancel_subscription(ctx, xsrf=None):
             'backer': user
         }
     ctx.validate_xsrf(xsrf)
-    _, err = handle_cancellation(ctx.user_id)
+    user, err = handle_cancellation(ctx.user_id)
     if err:
         return {'error': err}
-    delete_cache(['sponsors', 'sponsor.totals', 'donor.totals'])
+    err = sync_backer(ctx, user)
+    if err:
+        return {'error': err}
+    delete_cache_multi(['sponsors', 'sponsor.totals', 'donor.totals'])
     return {'cancelled': True}
 
 @handle(['community', 'site'])
@@ -1348,6 +1370,7 @@ def cron_donors(ctx):
     totals = DonorTotals.get_or_insert('gitfund')
     totals.count = count
     totals.put()
+    delete_cache('donor.totals')
     return 'OK'
 
 @handle
@@ -1752,8 +1775,8 @@ def init_state():
 
     for ident, duration, generator in [
         ('social.profiles', 300, get_social_profiles),
-        ('sponsors', 60, get_sponsors),
-        ('totals', 60, get_totals),
+        ('sponsors', 20, get_sponsors),
+        ('totals', 20, get_totals),
     ]:
         CACHE_SPECS[ident] = CacheSpec(duration, generator)
 

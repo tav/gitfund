@@ -80,7 +80,7 @@
 				<div class="backing-plan-desc content">${ctx.PLAN_DESCRIPTIONS[plan]}</div>
 				<div class="backing-plan-select${plan != 'platinum' and ' campaign-box-divider' or ''}${(not slots_available) and ' backing-plan-disabled' or ''}"><a href="/back.gitfund?plan=${plan}">
 				% if plan == 'donor':
-					Bacome an Individual Donor
+					Become an Individual Donor
 				% elif slots_available:
 					Become a ${plan_title}
 				% else:

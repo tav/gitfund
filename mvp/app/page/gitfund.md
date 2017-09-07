@@ -6,9 +6,11 @@
 
 * Unlike most crowdfunding sites, who tend to take a 5% cut, we will be charging 0% platform fee so that projects will get as much of the money as possible.
 
-* Given that most open source projects are run by volunteers and lack a legal entity to disburse funds, GitFund will directly support disbursing funds to multiple collaborators.
+* Given that most open source projects are run by volunteers and lack a legal entity to disburse funds, GitFund will directly support disbursements to multiple collaborators.
 
 * Help make GitFund happen by chipping in as an [individual donor](/back.gitfund)VAR-AVAILABLE-SLOT
+
+* Help spread the word by sharing/upvoting this. Thanks!
 
 ### Why GitFund?
 
@@ -200,7 +202,7 @@ If we don't support a country, then it will be primarily due to one of three rea
 
 * It's on an economic sanctions list of some kind.
 
-* It has data protection requirements which require all personal data to be stored and processed within that territory and we have not been able to figure out an affordable and reliable way of doing that for some reason.
+* It has data protection requirements which require all personal data to be stored and processed within that territory and we have not yet been able to figure out an affordable and reliable way of doing so.
 
 #### How will the collection and distribution of funds work?
 
@@ -228,7 +230,7 @@ GitFund will handle the various regulatory requirements and taxes like VAT, so t
 
 Of the [hundreds of][hundreds of] [crowdfunding platforms][crowdfunding platforms] out there, [OpenCollective] is perhaps the most similar to GitFund. We certainly share the same ethos. However, our models differ in a number of key ways:
 
-* They charge a hefty 10% platform fee in contrast to our 0%.
+* They charge a 10% platform fee in contrast to our 0%.
 
 * They give backers/sponsors a lot of choice in determining how much to give projects. In contrast, we believe that our more streamlined, tier-based approach will result in projects receiving more money.
 
@@ -236,7 +238,7 @@ Of the [hundreds of][hundreds of] [crowdfunding platforms][crowdfunding platform
 
 * Their current process requires a lot of manual steps. The only manual step we will have is a pretty light check to ensure that a project being listed is actually open source.
 
-* Their current model/implementation is pretty US-centric and ignores a lot of regulatory issues in other countries. In contrast, we will serve as much of the global open source community as possible — starting with 15+ countries.
+* Their current model/implementation is pretty US-centric and doesn't deal with a lot of regulatory issues in other countries. In contrast, we will serve as much of the global open source community as possible — starting with 15+ countries.
 
 #### What are your major cost centers?
 

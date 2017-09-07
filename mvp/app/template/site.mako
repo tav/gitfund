@@ -56,7 +56,7 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 		<a href="/site.donors">Donors</a>
 		<a href="/community">Slack/IRC Community</a>
 		% if ctx.user_id:
-		<a href="/manage.sponsorship">Manage Sponsorship</a>
+		<a href="/manage.subscription">Manage Subscription</a>
 		<a href="/logout">Log Out</a>
 		% else:
 		<a href="/login">Log In</a>

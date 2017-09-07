@@ -69,7 +69,7 @@
 				<div id="backer-territory-error" class="field-errmsg"></div>
 			</div>
 		</div>
-		% if territory in ctx.TERRITORY2TAX and plan != 'donor':
+		% if territory in ctx.TERRITORY2TAX and plan in ctx.PLAN_SLOTS:
 		<div class="field${tax_id_is_invalid and ' field-error' or ''}" id="backer-tax-id-field">
 		% else:
 		<div class="field${tax_id_is_invalid and ' field-error' or ''}" id="backer-tax-id-field" style="display: none">
@@ -136,11 +136,12 @@
 		<input id="card-token" type="hidden" name="card" value="${card|h}">
 		<div class="field-submit">
 			% if exists_plan:
-			<input type="submit" value="Update Billing Details">
+			<input type="submit" class="submit-button" value="Update Billing Details">
 			% else:
 			<p>By confirming your monthly <span id="submit-confirm">${plan in ('', 'donor') and 'donation' or 'sponsorship'}</span>, you are agreeing to <a href="/site/terms">GitFund's Terms of Service</a> and <a href="/site/privacy">Privacy Policy</a>.</p>
-			<input type="submit" id="submit" value="Confirm Monthly ${plan in ('', 'donor') and 'Donation' or 'Sponsorship'}">
+			<input type="submit" class="submit-button" id="submit-button" value="Confirm Monthly ${plan in ('', 'donor') and 'Donation' or 'Sponsorship'}">
 			% endif
+			<div class="submit-loader"><div class="loader"></div></div>
 		</div>
 	</form>
 </div>
