@@ -1568,10 +1568,11 @@ def site_donors(ctx, cursor=None):
     }
 
 @handle(['site.sponsors', 'site'])
-def site_sponsors(ctx, cursor=None):
+def site_sponsors(ctx, cursor=None, thanks=None):
     ctx.page_title = "Our Sponsors"
     return {
-        'sponsors': get_local('sponsors')
+        'sponsors': get_local('sponsors'),
+        'thanks': thanks,
     }
 
 @handle
@@ -1690,7 +1691,7 @@ def update_sponsor_profile(
     })
     run_in_transaction(txn)
     delete_cache('sponsors')
-    raise Redirect('/tav/gitfund?thanks=1')
+    raise Redirect('/site.sponsors?thanks=1')
 
 @handle(['users.list', 'site'])
 def users_list(ctx, cursor=None):

@@ -653,6 +653,8 @@ module.exports = (api) ->
       height: '20px'
       fontFamily: '"Helvetica Neue", Arial, sans-serif'
       fontSize: '15px'
+      '@media all and (max-width: 600px)':
+        fontSize: '12px'
       fontWeight: 'bold'
       lineHeight: '20px'
       marginRight: '4px'
@@ -673,7 +675,7 @@ module.exports = (api) ->
       height: '20px'
       position: 'relative'
       marginRight: '6px'
-      top: '4px'
+      top: '6px'
       width: '20px'
 
     '.ghb-star':
@@ -682,7 +684,7 @@ module.exports = (api) ->
       height: '20px'
       position: 'relative'
       marginRight: '4px'
-      top: '4px'
+      top: '6px'
       width: '20px'
 
     '.header':

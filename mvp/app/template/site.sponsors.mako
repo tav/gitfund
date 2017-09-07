@@ -1,7 +1,12 @@
+% if thanks:
+<div class="alert-green">Your sponsor profile is being updated. Thank you for your support!</div>
+% endif
 <div class="inner"><div class="content">
 <div class="notice-sponsors">
 	GitFund is made possible thanks to the support of our generous donors and sponsors.
+	% if not (ctx.user and ctx.user.backer):
 	<a href="/back.gitfund?plan=bronze">Become a sponsor today</a>.
+	% endif
 </div>
 % for tier in ['platinum', 'gold', 'silver', 'bronze']:
 <% tier_sponsors = sponsors[tier] %>

@@ -34,22 +34,6 @@
 		</div>
 		% endif
 		<div class="field">
-			<label for="backer-plan">Support Tier</label>
-			<div class="field-data">
-				<div class="select-box"><select id="backer-plan" name="plan">
-					<%
-						if territory:
-							prices = ctx.PRICES_INDEX[ctx.TERRITORY2PRICES[territory]]
-						else:
-							prices = ctx.DETAILED_DEFAULT
-					%>
-					% for tier in ['donor', 'bronze', 'silver', 'gold', 'platinum']:
-					<option${plan == tier and ' selected' or ''} value="${tier}" id="plan-${tier}">${prices[ctx.PRICES_POS[tier + '-detailed']]}</option>
-					% endfor
-				</select></div>
-			</div>
-		</div>
-		<div class="field">
 			<label for="backer-territory">Country</label>
 			<div class="field-data">
 				<div class="select-box"><select id="backer-territory" name="territory">
@@ -67,6 +51,22 @@
 				% endfor
 				</select></div>
 				<div id="backer-territory-error" class="field-errmsg"></div>
+			</div>
+		</div>
+		<div class="field">
+			<label for="backer-plan">Support Tier</label>
+			<div class="field-data">
+				<div class="select-box"><select id="backer-plan" name="plan">
+					<%
+						if territory:
+							prices = ctx.PRICES_INDEX[ctx.TERRITORY2PRICES[territory]]
+						else:
+							prices = ctx.DETAILED_DEFAULT
+					%>
+					% for tier in ['donor', 'bronze', 'silver', 'gold', 'platinum']:
+					<option${plan == tier and ' selected' or ''} value="${tier}" id="plan-${tier}">${prices[ctx.PRICES_POS[tier + '-detailed']]}</option>
+					% endfor
+				</select></div>
 			</div>
 		</div>
 		% if territory in ctx.TERRITORY2TAX and plan in ctx.PLAN_SLOTS:

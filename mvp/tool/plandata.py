@@ -96,10 +96,10 @@ for territory in sorted(TERRITORY2CURRENCY):
             append_js(fmt_amount)
             suffix = u' / month'
             if plan == 'donor':
-                prefix = u'Individual Donor &nbsp;·&nbsp;'
+                prefix = u'Individual Donor &nbsp;·&nbsp; '
                 title = 'Individual Donor'
             else:
-                prefix = u'%s Sponsor &nbsp;·&nbsp;' % plan.title()
+                prefix = u'%s Sponsor &nbsp;·&nbsp; ' % plan.title()
                 title = '%s Sponsor' % plan.title()
                 if gb_vat_regime:
                     suffix = u' / month (includes 20% VAT)'

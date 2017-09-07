@@ -10,7 +10,11 @@
 		</div>
 		<div class="info"><strong>${"{:,}".format(totals.backers)}</strong> ${ctx.pluralise('backer', totals.backers)}</div>
 		<div class="info"><strong class="price-info-target">${prices[ctx.PRICES_POS['target']]}</strong> / month target</div>
+		% if ctx.user and ctx.user.backer:
+		<a class="sponsor" href="/manage.subscription">Manage Backing</a>
+		% else:
 		<a class="sponsor" href="/back.gitfund">Back This Project</a>
+		% endif
 	</div></div>
 </div>
 <div class="clear"></div>
@@ -57,6 +61,7 @@
 				</select></div>
 			</div>
 		</div>
+		% if not (ctx.user and ctx.user.backer):
 		<div class="campaign-box">
 			<div class="campaign-box-inner">
 			% for plan in ['donor', 'bronze', 'silver', 'gold', 'platinum']:
@@ -90,6 +95,7 @@
 			% endfor
 			</div>
 		</div>
+		% endif
 		<div class="campaign-box">
 			<div class="campaign-box-title">CORE TEAM</div>
 			<div class="campaign-box-inner">
