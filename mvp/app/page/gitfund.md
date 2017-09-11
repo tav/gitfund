@@ -1,12 +1,12 @@
 ### TL;DR
 
-* We are building a sustainable solution to the [problem of funding open source projects][ford-report].
+* We are building a new crowdfunding platform with a unique model as a solution to the [problem of funding in open source projects][ford-report].
 
 * GitFund will make it easy for companies, who tend to be the biggest beneficiaries of open source, to support the projects that they depend on.
 
 * Unlike most crowdfunding sites, who tend to take a 5% cut, we will be charging 0% platform fee so that projects will get as much of the money as possible.
 
-* Given that most open source projects are run by volunteers and lack a legal entity to disburse funds, GitFund will directly support disbursements to multiple collaborators.
+* As an open source project ourselves, we're using the GitFund model to cover the costs of building and running GitFund.
 
 * Help make GitFund happen by chipping in as an [individual donor](/back.gitfund)VAR-AVAILABLE-SLOT
 
@@ -128,7 +128,7 @@ This period will be used to set up the various legal requirements as well as to 
 
 <div class="image"><a href="/static/gfx/b9ff596df9a42b50a52653153816c6a56eb06328-budget-piechart.png"><img src="/static/gfx/b9ff596df9a42b50a52653153816c6a56eb06328-budget-piechart.png"></a></div>
 
-The Beta will launch with an initial set of projects. If you'd like your project to be part of the Beta launch, then please leave a supportive comment below with a brief description and a link to your project/repo.
+The Beta will launch with an initial set of projects. If you'd like your project to be part of the Beta launch, then please [add your project here](/get.funded), and we'll get in touch before the launch.
 
 And, if you can, chip in as an [individual donor](/back.gitfund) or get your company to [sponsor GitFund](/back.gitfund?plan=bronze). You will get lots of good karma and all of us in the open source community will be grateful for what you've made possible.
 
@@ -142,6 +142,16 @@ We are the [Espians][espians], a small "remote-first" tech collective headquarte
 
 We will initially be using Espians LLP, our existing legal entity, to operate GitFund. But once GitFund has been successfully running for a few years, we will look to separating it out into an independent non-profit.
 
+#### What will happen if you don't raise your target?
+
+Hopefully there will be enough interest in supporting the open source ecosystem for us to raise our target.
+
+But if by the end of the year we still haven't reached it, then, depending on the amount raised and our costs (especially with regards to legals and compliance), we will either:
+
+* Continue with the project — albeit delivering it at a slightly slower pace than expected.
+
+* Put the project on hold and cancel any further payments from our supporters. In which case, we will of course leave all of the GitFund code we'd developed till then as open source.
+
 #### How will the 0% platform fee work?
 
 Unlike most crowdfunding sites, we will not be charging a platform fee on GitFund. This is possible due to a number of reasons:
@@ -152,7 +162,7 @@ Unlike most crowdfunding sites, we will not be charging a platform fee on GitFun
 
   * Any chargebacks across the whole platform, where we are not able to immediately recover the funds from the project where the chargeback occurred, i.e. due to funds already being paid out.
 
-  * Any excess hosting/SaaS costs above our allocated budget of $4k/month.
+  * Any excess hosting/SaaS costs above our allocated budget of $3k/month.
 
   After 90 days, all unused amounts from the reserve will then be given back to the projects, in proportion to how much was taken from them.
 
@@ -168,9 +178,9 @@ Over time, if there's enough interest and we have enough resources, we'll also a
 
 #### How do I get my project onto GitFund?
 
-If you'd like your project to be part of the Beta launch, then please leave a comment below with a brief description and a link to your repo. We'll then get in touch before the launch.
+If you'd like your project to be part of the Beta launch, then please [add your project here](/get.funded), and we'll get in touch before the launch.
 
-After the launch, anyone will be able to put their open source project on GitFund, by just signing up and setting up the project. The only limitation will be for project members to live in one of our supported countries.
+After the launch, anyone will be able to put their open source project onto GitFund, by just signing up and setting up the project. The only limitation will be for project members to live in one of our supported countries.
 
 #### Which countries will you support?
 
@@ -230,7 +240,7 @@ GitFund will handle the various regulatory requirements and taxes like VAT, so t
 
 Of the [hundreds of][hundreds of] [crowdfunding platforms][crowdfunding platforms] out there, [OpenCollective] is perhaps the most similar to GitFund. We certainly share the same ethos. However, our models differ in a number of key ways:
 
-* They charge a 10% platform fee in contrast to our 0%.
+* They charge a 5-10% fee in contrast to our 0%.
 
 * They give backers/sponsors a lot of choice in determining how much to give projects. In contrast, we believe that our more streamlined, tier-based approach will result in projects receiving more money.
 
@@ -325,16 +335,6 @@ Yes, the code for GitFund is open source and is being developed in the open. You
 This [MVP][mvp] runs on Python App Engine. The actual version will run using a minimal services framework with most of the code written in Go, and Rust used for some things like [syntax highlighting][syntect].
 
 While the app as a whole will not be of much use to anyone besides us and our users, a lot of the code should prove useful to others, e.g. integrating with Stripe Connect, tools for handling taxes, compliance, &c.
-
-#### What will happen if you don't raise your target?
-
-Hopefully there will be enough interest in supporting the open source ecosystem for us to raise our target.
-
-But if by the end of the year we still haven't reached it, then, depending on the amount raised and our costs (especially with regards to legals and compliance), we will either:
-
-* Continue with the project — albeit delivering it at a slightly slower pace than expected.
-
-* Put the project on hold and cancel any further payments from our supporters. In which case, we will of course leave all of the GitFund code we'd developed till then as open source.
 
 [adsense]: https://www.google.co.uk/adsense/start/how-it-works/
 [asciicasts]: https://asciinema.org/

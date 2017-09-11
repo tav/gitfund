@@ -9,6 +9,12 @@ from json import dumps as encode_json, loads as decode_json
 # Models
 # -----------------------------------------------------------------------------
 
+class BetaProject(db.Model): # key=<project_id>
+    v = db.IntegerProperty(default=0)
+    email = db.TextProperty(default=u'')
+    name = db.TextProperty(default=u'')
+    url = db.TextProperty(default=u'')
+
 class DonorTotals(db.Model): # key=<project_id>
     v = db.IntegerProperty(default=0)
     count = db.IntegerProperty(default=0)

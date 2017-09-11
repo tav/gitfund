@@ -72,10 +72,22 @@ defpkg('app', function(exports, root) {
   }
 
   function initCampaignContent() {
-    var $content = doc.$('campaign-content');
+    var $content = doc.$('campaign-content'),
+        showingTarget = true;
     if (!$content) {
       return;
     }
+    $('progress-bar').addEventListener('click', function(e) {
+      if (showingTarget) {
+        $('info-target').style.display = 'none';
+        $('info-raised').style.display = 'inline-block';
+        showingTarget = false;
+      } else {
+        $('info-raised').style.display = 'none';
+        $('info-target').style.display = 'inline-block';
+        showingTarget = true;
+      }
+    });
     $('read-full-link').addEventListener('click', function(e) {
       removeClass($content, 'collapse-mobile');
       loc.hash = 'expanded';

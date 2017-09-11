@@ -207,7 +207,7 @@ module.exports = (api) ->
       color: '#515d64'
       fontSize: '13px'
       lineHeight: '13px'
-      paddingTop: '3px'
+      paddingTop: '4px'
 
     '.backing-plan-disabled':
       cursor: 'default'
@@ -218,6 +218,7 @@ module.exports = (api) ->
         color: '#000 !important'
 
     '.backing-plan-select':
+      paddingBottom: '5px'
       textAlign: 'center'
       a:
         background: '#2bde73'
@@ -227,6 +228,7 @@ module.exports = (api) ->
         padding: '8px 16px'
         marginBottom: '14px'
         transition: 'background-color 250ms ease-out'
+        width: '100%'
         '&:hover':
           background: '#1fc863'
 
@@ -924,6 +926,7 @@ module.exports = (api) ->
       background: '#f2f4f5'
       background: '#ccc'
       borderRadius: '3px'
+      cursor: 'pointer'
       height: '8px'
       marginBottom: '7px'
       maxWidth: '500px'
@@ -955,14 +958,20 @@ module.exports = (api) ->
         '@media all and (max-width: 600px)':
           display: 'block'
 
+    '.project-image':
+      paddingBottom: '10px'
+
     '.project-title':
-      fontSize: '48px'
+      fontSize: '40px'
       fontWeight: '400'
-      lineHeight: '64px'
+      lineHeight: '60px'
       marginBottom: '20px'
       '@media all and (max-width: 922px)':
-        fontSize: '30px'
-        lineHeight: '40px'
+        fontSize: '24px'
+        lineHeight: '36px'
+      '@media all and (max-width: 600px)':
+        fontSize: '20px'
+        lineHeight: '30px'
 
     '.select-box':
       display: 'inline-block'

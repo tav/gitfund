@@ -52,9 +52,10 @@ Stripe.setPublishableKey('${ctx.STRIPE_PUBLISHABLE_KEY}');
 			% endif
 			<a href="/back.gitfund">Back GitFund</a>
 		% endif
+		<a href="/get.funded">Get Funded</a>
 		<a href="/site.sponsors">Sponsors</a>
 		<a href="/site.donors">Donors</a>
-		<a href="/community">Slack/IRC Community</a>
+		<a href="/community">Slack/IRC</a>
 		% if ctx.user_id:
 		<a href="/manage.subscription">Manage Subscription</a>
 		<a href="/logout">Log Out</a>
@@ -104,6 +105,7 @@ ${content}
 	<li>&copy; ${ctx.current_year()} Espians LLP</li>
 	<li><a href="/site/about">About Us</a></li>
 	<li><a href="/site/press">Press</a></li>
+	<li><a href="/get.funded">Get Funded</a></li>
 	<li><a href="/site.sponsors">Our Sponsors</a></li>
 	<li><a href="/site.donors">Our Donors</a></li>
 	<li><a href="/community">Slack/IRC Community</a></li>

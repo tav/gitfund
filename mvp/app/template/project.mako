@@ -4,12 +4,10 @@
 	<div class="campaign-banner"><div class="inner">
 		<div class="progress-bar">
 			<div class="progress-bar-fill" style="width: ${totals.percent}%"></div>
-			% if totals.progress:
-			<div class="progress-info">${totals.progress}</div>
-			% endif
 		</div>
 		<div class="info"><strong>${"{:,}".format(totals.backers)}</strong> ${ctx.pluralise('backer', totals.backers)}</div>
-		<div class="info"><strong class="price-info-target">${prices[ctx.PRICES_POS['target']]}</strong> / month target</div>
+		<div class="info info-target"><strong class="price-info-target">${prices[ctx.PRICES_POS['target']]}</strong> / month target</div>
+		<div class="info info-raised" style="display: none;">raised approx.&nbsp; <strong>$${totals.raised}</strong> per month</div>
 		% if ctx.user and ctx.user.backer:
 		<a class="sponsor" href="/manage.subscription">Manage Backing</a>
 		% else:
@@ -20,15 +18,13 @@
 <div class="clear"></div>
 <div class="campaign-cols"><div class="campaign-inner">
 	% if thanks:
-	% if thanks == 'sponsor':
-	<div class="alert-green">Your sponsor profile has been updated. Thank you for your support!</div>
-	% else:
-	<div class="alert-green">Thank you for your support!</div>
+	<div class="alert-green">Your backing is being processed. Thank you for your support!</div>
 	% endif
-	% elif ctx.preview_mode:
+	% if ctx.preview_mode:
 	<div class="preview-warn">This is for preview only. Please do not share publicly. Thank you.</div>
 	% endif
 	<div class="project-title inner-pad-only">${ctx.CAMPAIGN_TITLE|h}</div>
+	<div class="project-image inner-pad-only"><a href="${ctx.STATIC('gfx/gitfund-overview.png')}"><img src="${ctx.STATIC('gfx/gitfund-overview.png')}" style="width: 100%"></a></div>
 	<div class="inner-pad-only project-activity-bar">
 		<a class="button-twitter" href="https://twitter.com/intent/tweet/?${ctx.urlencode({'text': 'Check out ' + ctx.site_title.encode('utf-8'), 'url': 'https://gitfund.io/tav/gitfund'})}"><span>Tweet</span></a>
 		<a class="button-facebook" href="https://facebook.com/sharer/sharer.php?${ctx.urlencode({'u': 'https://gitfund.io/tav/gitfund'})}"><span>Share</span></a>
@@ -82,8 +78,8 @@
 				%>
 				<div class="backing-plan-title">${plan_title}</div>
 				<div class="backing-plan-backers">${info}, <span class="price-info-${plan}-plain">${prices[ctx.PRICES_POS[plan + '-plain']]}</span> / month</div>
-				<div class="backing-plan-desc content">${ctx.PLAN_DESCRIPTIONS[plan]}</div>
-				<div class="backing-plan-select${plan != 'platinum' and ' campaign-box-divider' or ''}${(not slots_available) and ' backing-plan-disabled' or ''}"><a href="/back.gitfund?plan=${plan}">
+				<div class="backing-plan-desc">${ctx.PLAN_DESCRIPTIONS[plan]}</div>
+				<div class="backing-plan-select${(not slots_available) and ' backing-plan-disabled' or ''}"><a href="/back.gitfund?plan=${plan}">
 				% if plan == 'donor':
 					Become an Individual Donor
 				% elif slots_available:

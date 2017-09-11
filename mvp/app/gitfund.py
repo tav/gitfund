@@ -33,7 +33,7 @@ from config import (
 )
 
 from model import (
-    ExchangeRates, DonorTotals, GitHubProfile, GitHubRepo, Login,
+    BetaProject, DonorTotals, ExchangeRates, GitHubProfile, GitHubRepo, Login,
     SponsorRecord, SponsorTotals, StripeEvent, TwitterProfile, User
 )
 
@@ -111,6 +111,8 @@ README_PNG = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x05\x00\x00\x00\x9
 
 SIMG = "By Markus Spiske: https://unsplash.com/@markusspiske?photo=xekxE_VR0Ec"
 
+USD_BASE_PRICE = BASE_PRICES['USD'][-1]
+
 VALID_SPONSOR_IMAGE_CONTENT_TYPES = frozenset([
     'image/jpeg',
     'image/png',
@@ -139,7 +141,7 @@ def current_year():
     return datetime.utcnow().year
 
 def get_site_sponsors():
-    sponsors = get_local('sponsors')
+    sponsors = get_sponsors()
     profiles = []
     for tier in ['platinum', 'gold', 'silver', 'bronze']:
         tier_sponsors = sponsors[tier]
@@ -245,7 +247,7 @@ def get_local(ident, force=False):
 # -----------------------------------------------------------------------------
 
 Totals = namedtuple(
-    'Totals', ['backers', 'donors', 'sponsor_plans', 'percent', 'progress']
+    'Totals', ['backers', 'donors', 'sponsor_plans', 'percent', 'raised']
 )
 
 def get_totals():
@@ -263,7 +265,11 @@ def get_totals():
     if 'donor.totals' in cache:
         donors = cache['donor.totals']
     else:
-        donors = DonorTotals.get_or_insert('gitfund').count
+        donors = 0
+        for backer in User.all().filter('backer =', True).filter(
+            'sponsor =', False
+        ).run(batch_size=1000, keys_only=True):
+            donors += 1
         to_set['donor.totals'] = donors
     if to_set:
         set_cache_multi(to_set, 20)
@@ -271,15 +277,14 @@ def get_totals():
     raised += donors * PLAN_FACTORS['donor']
     if not raised:
         percent = 0
-        progress = ''
     else:
         pct = (raised / CAMPAIGN_TARGET_FACTOR) * 100
         if pct > 1:
             percent = int(pct)
         else:
             percent = 1
-        progress = '%.2f%%' % pct
-    return Totals(backers, donors, sponsor_plans, percent, progress)
+    raised = "{:,}".format(raised * USD_BASE_PRICE)
+    return Totals(backers, donors, sponsor_plans, percent, raised)
 
 SocialProfiles = namedtuple('SocialProfiles', ['github', 'repo', 'twitter'])
 
@@ -346,7 +351,7 @@ def get_sponsors():
             'text': sponsor.get_link_text(),
             'url': sponsor.get_link_url(),
         })
-    set_cache('sponsors', sponsors, 60)
+    set_cache('sponsors', sponsors, 20)
     return sponsors
 
 # -----------------------------------------------------------------------------
@@ -779,6 +784,10 @@ def get_stripe_plan(plan, territory):
 def handle_cancellation(user_id, totals_need_syncing=True):
     user = run_in_transaction(cancel_backing_txn, user_id, totals_need_syncing)
     err = handle_stripe_cancellation(user, user_id)
+    if totals_need_syncing:
+        run_in_transaction(
+            sync_totals_txn, str(user_id), '', user.totals_version
+        )
     return user, err
 
 def handle_stripe_cancellation(user, user_id):
@@ -838,6 +847,10 @@ def sync_backer(ctx, user, first_time=False):
                 "Sorry, there was an error processing your payment: %s"
                 % e.json_body['error']['message']
             )
+            if create_sub:
+                user, _err = handle_cancellation(user_id)
+                if _err:
+                    err.append(_err)
         except Exception as e:
             logging.error(
                 "Error handling subscription for %r on %r plan: %r"
@@ -846,6 +859,12 @@ def sync_backer(ctx, user, first_time=False):
             err.append(
                 "Sorry, there was an unexpected error with our payment processor. Please try again later."
             )
+            if isinstance(e, stripe.error.InvalidRequestError):
+                if hasattr(e, 'message'):
+                    if e.message == 'This customer has no attached payment source':
+                        user, _err = handle_cancellation(user_id)
+                        if _err:
+                            err.append(_err)
         if not err:
             stripe_version = user.stripe_update_version
             sub_id = subscription.id
@@ -911,6 +930,8 @@ def sync_backer(ctx, user, first_time=False):
 # order of retry.
 def sync_totals_txn(user_id, plan, version):
     totals = SponsorTotals.get_by_key_name('gitfund')
+    if not totals:
+        totals = SponsorTotals(key_name='gitfund')
     plans = totals.get_plans()
     record = SponsorRecord.get_by_key_name(user_id, parent=totals)
     if not record:
@@ -1346,12 +1367,11 @@ def compare_currencies(ctx):
         ExchangeRates.get_by_key_name('latest').data, parse_float=Decimal
         )['rates']
     data = []
-    usd_value = BASE_PRICES['USD'][-1]
     dec_places_2 = Decimal('0.01')
     dec_places_4 = Decimal('0.0001')
     for currency in BASE_PRICES:
         value = Decimal(BASE_PRICES[currency][-1])
-        current = rates[currency] * usd_value
+        current = rates[currency] * USD_BASE_PRICE
         cur_dec = Decimal(current).quantize(dec_places_2, ROUND_HALF_UP)
         ratio = (value / current).quantize(dec_places_4, ROUND_HALF_UP)
         data.append((currency, ratio, cur_dec, value))
@@ -1441,6 +1461,34 @@ def cron_twitter(ctx):
     delete_cache_multi(TWITTER_MEMCACHE_KEYS)
     return 'OK'
 
+@handle(['get.funded', 'site'])
+def get_funded(ctx, name='', email='', url='', xsrf=None):
+    ctx.page_title = "Get Funded"
+    if xsrf is None:
+        return {'name': '', 'email': '', 'url': ''}
+    ctx.validate_xsrf(xsrf)
+    name = name.strip()
+    if not name:
+        return {
+            'error': "Please provide your name.",
+            'name': name, 'email': email, 'url': url
+        }
+    email = email.strip()
+    if not is_email(email):
+        return {
+            'error': "Please provide a valid email address.",
+            'name': name, 'email': email, 'url': url
+        }
+    url = url.strip()
+    if not url:
+        return {
+            'error': "Please provide the project/repo URL.",
+            'name': name, 'email': email, 'url': url
+        }
+    rec = BetaProject(name=name, email=email, url=url)
+    rec.put()
+    return {'updated': True}
+
 @handle(['login', 'site'])
 def login(ctx, return_to='', email='', existing=False, xsrf=None):
     ctx.page_title = "Log in to GitFund"
@@ -1495,6 +1543,73 @@ def logout(ctx):
 def manage_subscription(ctx):
     ctx.page_title = "Manage Subscription"
 
+@handle(['manual.sponsor', 'site'], admin=True)
+def manual_sponsor(
+    ctx, name='', email='', plan='', link='', image=None, xsrf=None
+    ):
+    ctx.page_title = "Setup Manual Sponsor"
+    if xsrf is None:
+        return {
+            'name': name, 'email': email, 'plan': plan, 'link': link,
+        }
+    ctx.validate_xsrf(xsrf)
+    def error(msg):
+        return {
+            'name': name, 'email': email, 'plan': plan, 'link': link,
+            'error': msg
+        }
+    name = name.strip()
+    if not name:
+        return error("Please provide the sponsor name.")
+    email = email.strip()
+    if not is_email(email):
+        return error("Please provide a valid email address.")
+    plan = plan.strip()
+    if plan not in PLAN_FACTORS:
+        return error("Please select a support tier.")
+    user = get_user_from_email(email)
+    if user:
+        return error("A record already exists for that email address.")
+    user = create_user(name, email)
+    user.backer = True
+    user.backing_started = datetime.utcnow()
+    user.link_text = name
+    user.link_url = link.strip()
+    user.payment_type = 'manual'
+    user.plan = plan
+    if plan != 'donor':
+        user.sponsor = True
+        user.totals_need_syncing = True
+        user.totals_version += 1
+    if hasattr(image, 'file'):
+        data = image.value
+        if data and len(data) > (12 << 20):
+            return error("The sponsor image must be less than 12MB.")
+        if data.startswith('\xff\xd8\xff'):
+            fmt = 'jpeg'
+        elif data.startswith('\x89PNG\r\n\x1a\n'):
+            fmt = 'png'
+        else:
+            return error("Sorry, only JPEG and PNG images are currently supported.")
+        meta = Image(data)
+        meta.im_feeling_lucky()
+        meta.execute_transforms(
+            parse_source_metadata=True, output_encoding=JPEG, quality=1
+        )
+        width, height = meta.width, meta.height
+        if (width < 300) or (height < 150):
+            return error("Sorry, the image must be at least 300px wide and 150px high.")
+        if (float(width) / height) > 3:
+            return error("Sorry, the width of the image cannot be more than 3 times its height.")
+        image_id = b32encode(sha256(data).digest() + pack('d', time()))
+        write_file('sponsor.image/' + image_id, data)
+        user.image_id = image_id + '.' + fmt
+    user.put()
+    if plan != 'donor':
+        sync_backer(ctx, user, first_time=True)
+    delete_cache_multi(['sponsors', 'sponsor.totals', 'donor.totals'])
+    return {'created': True}
+
 @handle
 def readme_image(ctx, plan=None, size='300'):
     if plan not in PLAN_SLOTS:
@@ -1503,7 +1618,7 @@ def readme_image(ctx, plan=None, size='300'):
         int(size)
     except:
         raise NotFound
-    sponsors = get_local('sponsors')[plan]
+    sponsors = get_sponsors()[plan]
     if not sponsors:
         ctx.response_headers['Cache-Control'] = 'public, max-age=30;'
         ctx.response_headers['Content-Type'] = 'image/png'
@@ -1571,7 +1686,7 @@ def site_donors(ctx, cursor=None):
 def site_sponsors(ctx, cursor=None, thanks=None):
     ctx.page_title = "Our Sponsors"
     return {
-        'sponsors': get_local('sponsors'),
+        'sponsors': get_sponsors(),
         'thanks': thanks,
     }
 
@@ -1613,7 +1728,6 @@ def stripe_webhook(ctx, token, **kwargs):
 def tav(ctx, project='', thanks=None, **kwargs):
     if project != 'gitfund':
         raise NotFound
-    ctx.preview_mode = True
     ctx.show_sponsors_footer = True
     ctx.site_description = CAMPAIGN_DESCRIPTION
     ctx.site_image = ctx.site_url + ctx.STATIC("gfx/cover.lossy.jpeg")
@@ -1622,7 +1736,7 @@ def tav(ctx, project='', thanks=None, **kwargs):
     return {
         'social': get_local('social.profiles'),
         'territory': ctx.get_territory(),
-        'totals': get_local('totals'),
+        'totals': get_totals(),
         'thanks': thanks,
     }
 
@@ -1759,8 +1873,9 @@ if not LIVE:
             return xsrf_url(ctx)
         ctx.validate_xsrf(xsrf)
         for model in [
-            ExchangeRates, DonorTotals, GitHubProfile, GitHubRepo, Login,
-            SponsorRecord, SponsorTotals, StripeEvent, TwitterProfile, User
+            BetaProject, DonorTotals, ExchangeRates, GitHubProfile, GitHubRepo,
+            Login, SponsorRecord, SponsorTotals, StripeEvent, TwitterProfile,
+            User
         ]:
             for entity in model.all():
                 db.delete(entity)
@@ -1776,8 +1891,6 @@ def init_state():
 
     for ident, duration, generator in [
         ('social.profiles', 300, get_social_profiles),
-        ('sponsors', 20, get_sponsors),
-        ('totals', 20, get_totals),
     ]:
         CACHE_SPECS[ident] = CacheSpec(duration, generator)
 

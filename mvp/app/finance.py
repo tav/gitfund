@@ -7,7 +7,7 @@ from decimal import Decimal
 # Globals
 # -----------------------------------------------------------------------------
 
-CAMPAIGN_TARGET_FACTOR = Decimal(5000)
+CAMPAIGN_TARGET_FACTOR = Decimal(3500)
 
 CONTENT_FACTORS = {
     'example-gold': 250,
@@ -18,15 +18,15 @@ CONTENT_FACTORS = {
 
 PLAN_FACTORS = {
     'donor': 1,
-    'bronze': 125,
-    'silver': 250,
-    'gold': 500,
-    'platinum': 1000
+    'bronze': 50,
+    'silver': 100,
+    'gold': 250,
+    'platinum': 500
 }
 
 PLAN_SLOTS = {
-    'bronze': 40,
-    'silver': 20,
+    'bronze': 50,
+    'silver': 25,
     'gold': 10,
     'platinum': 5
 }
@@ -206,3 +206,9 @@ TERRITORY2TAX = {
   'SI': ['SI', None],
   'SK': ['SK', None],
 }
+
+if __name__ == '__main__':
+    price = BASE_PRICES['USD'][-1]
+    for plan, slots in PLAN_SLOTS.items():
+        total = slots * PLAN_FACTORS[plan] * price
+        print "%10s  %s" % (plan, total)

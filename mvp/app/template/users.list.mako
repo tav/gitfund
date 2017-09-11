@@ -22,7 +22,15 @@
 			</td>
 			<td>
 				% if user.plan:
+					% if user.stripe_subscription:
+						% if ctx.LIVE:
+						<a href="https://dashboard.stripe.com/subscriptions/${user.stripe_subscription}">${user.plan}</a>
+						% else:
+						<a href="https://dashboard.stripe.com/test/subscriptions/${user.stripe_subscription}">${user.plan}</a>
+						% endif
+					% else:
 					${user.plan}
+					% endif
 					% if user.delinquent:
 					<em>*delinquent</em>
 					% endif
@@ -33,13 +41,13 @@
 			</td>
 			<td>
 				% if ctx.ON_GOOGLE:
-				<a href="https://console.cloud.google.com/datastore/entities/edit?key=0%2F%7C1%2FU%7C19%2Fid:${user.key().id()}&project=gitfund&ns=&kind=U">edit</a>
+				<a href="https://console.cloud.google.com/datastore/entities/edit?key=0%2F%7C4%2FUser%7C19%2Fid:${user.key().id()}&project=gitfund&ns=&kind=User">edit</a>
 				% else:
 				<a href="http://localhost:8000/datastore/edit/${str(user.key())}">edit</a>
 				% endif
 				% if user.stripe_customer_id:
 					·
-					% if LIVE:
+					% if ctx.LIVE:
 					<a href="https://dashboard.stripe.com/customers/${user.stripe_customer_id}">stripe</a>
 					% else:
 					<a href="https://dashboard.stripe.com/test/customers/${user.stripe_customer_id}">stripe</a>
